@@ -130,13 +130,13 @@ def _auth() -> dict:
         "Password":     EA_API_PASS,
         "CompanyID":    EA_API_COMPANY,
         "Version":      "20.1",
-        "PartnerToken": None,
+        "PartnerToken": "",
     }
 
 
 def _ts(value: Optional[str] = None) -> dict:
-    """Return a TimeStamp kwarg dict — omits the key entirely when value is None."""
-    return {"TimeStamp": value} if value is not None else {}
+    """Return a TimeStamp kwarg dict — passes empty string when no value given."""
+    return {"TimeStamp": value if value is not None else ""}
 
 
 def _code(id_val=None, code_val=None) -> dict:

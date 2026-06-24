@@ -274,7 +274,7 @@ def get_open_calls_for_customer(customer_number: str) -> list:
         customer_number: Customer code
     """
     _validate_required(customer_number, "customer_number")
-    calls = _serialize(_client().service.getOpenCallList(Auth=_auth()))
+    calls = _serialize(_client().service.getOpenCallList(Auth=_auth(), **_ts()))
     if not isinstance(calls, list):
         return calls
     return [c for c in calls if isinstance(c, dict) and
@@ -292,9 +292,9 @@ def get_calls_for_technician(technician_code: str, open_only: bool = True) -> li
     """
     _validate_required(technician_code, "technician_code")
     if open_only:
-        calls = _serialize(_client().service.getOpenCallList(Auth=_auth()))
+        calls = _serialize(_client().service.getOpenCallList(Auth=_auth(), **_ts()))
     else:
-        calls = _serialize(_client().service.getCallList(Auth=_auth()))
+        calls = _serialize(_client().service.getCallList(Auth=_auth(), **_ts()))
     if not isinstance(calls, list):
         return calls
     return [c for c in calls if isinstance(c, dict) and
