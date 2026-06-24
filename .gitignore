@@ -1,3 +1,6 @@
+# WSDL — local reference only
+wsdl service description.txt
+
 # Environment / secrets — never commit
 .env
 .env.*
