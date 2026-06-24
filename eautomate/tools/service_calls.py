@@ -1,6 +1,6 @@
 """eAutomate MCP — service call tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
 from typing import Optional
 from datetime import datetime
 
@@ -23,7 +23,7 @@ def get_open_calls(since_timestamp: Optional[str] = None,
         customer_number: Filter by customer number (client-side)
         status: Filter by call status code (client-side, e.g. 'Dispatched', 'Pending')
     """
-    calls = _serialize(_client().service.getOpenCallList(Auth=_auth(), TimeStamp=since_timestamp))
+    calls = _serialize(_client().service.getOpenCallList(Auth=_auth(), **_ts(since_timestamp)))
     if not isinstance(calls, list):
         return calls
     if technician_code:
@@ -46,7 +46,7 @@ def get_call_list(since_timestamp: Optional[str] = None) -> list:
     Args:
         since_timestamp: Optional e-automate timestamp string
     """
-    return _serialize(_client().service.getCallList(Auth=_auth(), TimeStamp=since_timestamp))
+    return _serialize(_client().service.getCallList(Auth=_auth(), **_ts(since_timestamp)))
 
 
 @mcp.tool()
@@ -74,7 +74,6 @@ def get_open_calls_for_equipment(equipment_number: str) -> list:
     return _serialize(_client().service.getOpenCallListForEquipment(
         Auth=_auth(),
         EquipmentNumber=_code(code_val=equipment_number),
-        TimeStamp=None,
     ))
 
 
@@ -275,7 +274,7 @@ def get_open_calls_for_customer(customer_number: str) -> list:
         customer_number: Customer code
     """
     _validate_required(customer_number, "customer_number")
-    calls = _serialize(_client().service.getOpenCallList(Auth=_auth(), TimeStamp=None))
+    calls = _serialize(_client().service.getOpenCallList(Auth=_auth()))
     if not isinstance(calls, list):
         return calls
     return [c for c in calls if isinstance(c, dict) and
@@ -293,9 +292,9 @@ def get_calls_for_technician(technician_code: str, open_only: bool = True) -> li
     """
     _validate_required(technician_code, "technician_code")
     if open_only:
-        calls = _serialize(_client().service.getOpenCallList(Auth=_auth(), TimeStamp=None))
+        calls = _serialize(_client().service.getOpenCallList(Auth=_auth()))
     else:
-        calls = _serialize(_client().service.getCallList(Auth=_auth(), TimeStamp=None))
+        calls = _serialize(_client().service.getCallList(Auth=_auth()))
     if not isinstance(calls, list):
         return calls
     return [c for c in calls if isinstance(c, dict) and

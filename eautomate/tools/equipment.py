@@ -1,6 +1,6 @@
 """eAutomate MCP — equipment tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
 from typing import Optional
 from datetime import datetime
 
@@ -17,7 +17,7 @@ def get_equipment_list(since_timestamp: Optional[str] = None) -> list:
     Args:
         since_timestamp: Optional e-automate timestamp string
     """
-    return _serialize(_client().service.getEquipmentList(Auth=_auth(), TimeStamp=since_timestamp))
+    return _serialize(_client().service.getEquipmentList(Auth=_auth(), **_ts(since_timestamp)))
 
 
 @mcp.tool()
@@ -32,7 +32,7 @@ def get_equipment_list_for_customer(customer_number: str,
     """
     return _serialize(_client().service.getEquipmentListForCustomer(
         Auth=_auth(),
-        TimeStamp=since_timestamp,
+        **_ts(since_timestamp),
         CustomerNumber=_code(code_val=customer_number),
     ))
 

@@ -1,6 +1,6 @@
 """eAutomate MCP — contract tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
 from typing import Optional
 from datetime import datetime
 
@@ -17,7 +17,7 @@ def get_contract_list(since_timestamp: Optional[str] = None) -> list:
     Args:
         since_timestamp: Optional e-automate timestamp string
     """
-    return _serialize(_client().service.getContractList(Auth=_auth(), TimeStamp=since_timestamp))
+    return _serialize(_client().service.getContractList(Auth=_auth(), **_ts(since_timestamp)))
 
 
 @mcp.tool()
@@ -31,7 +31,6 @@ def get_contracts_for_customer(customer_number: str) -> list:
     return _serialize(_client().service.getContractListForCustomer(
         Auth=_auth(),
         CustomerNumber=_code(code_val=customer_number),
-        TimeStamp=None,
     ))
 
 

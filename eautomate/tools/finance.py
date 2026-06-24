@@ -206,7 +206,7 @@ def add_ar_receipt(customer_number: str,
 def get_unapplied_payments() -> list:
     """List unapplied AR payments that are ready to be applied to invoices."""
     return _serialize(_client().service.getUnappliedPaymentsReadyToApply(
-        Auth=_auth(), TimeStamp=None
+        Auth=_auth()
     ))
 
 
@@ -217,7 +217,7 @@ def apply_unapplied_payments() -> dict:
     This is the one-call version combining get + apply.
     """
     result = _client().service.getAndApplyUnappliedPaymentsReadyToApply(
-        Auth=_auth(), TimeStamp=None
+        Auth=_auth()
     )
     return _serialize(result)
 

@@ -134,6 +134,11 @@ def _auth() -> dict:
     }
 
 
+def _ts(value: Optional[str] = None) -> dict:
+    """Return a TimeStamp kwarg dict — omits the key entirely when value is None."""
+    return {"TimeStamp": value} if value is not None else {}
+
+
 def _code(id_val=None, code_val=None) -> dict:
     return {
         "ID":   {"Value": id_val or 0,   "Valid": id_val is not None},
