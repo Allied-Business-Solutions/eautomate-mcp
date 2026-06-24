@@ -1,0 +1,149 @@
+# eAutomate MCP — Claude Code Project Guide
+
+## What This Is
+
+A Python FastMCP server that bridges Claude and the eAutomate PublicAPI (SOAP) for Allied Business Solutions. Users are dispatchers, billing/service admins, and purchasing staff who interact with eAutomate through Claude instead of the desktop app.
+
+**Entry point:** `server.py` (~2200 lines, 65+ MCP tools)
+**Transport:** stdio (`mcp run server.py`)
+**API:** eAutomate PublicAPIService via SOAP (zeep library)
+
+## Environment Setup
+
+Create a `.env` file in the project root:
+
+```
+EA_API_URL=https://yourserver/pip/PublicAPIService.asmx
+EA_API_USER=eautomate_username
+EA_API_PASS=eautomate_password
+EA_API_COMPANY=1
+```
+
+`EA_API_COMPANY` is the CompanyID from eAutomate Help > About.
+
+## Key Helpers — Know These Before Adding Tools
+
+### Authentication & Client
+
+```python
+_client()   # returns cached zeep SOAP client; reconnects on failure
+_auth()     # returns AuthInfo object for every SOAP call
+```
+
+### eAutomate Extended Types (required by the SOAP API)
+
+Every SOAP field uses a wrapper type — never pass raw Python values:
+
+```python
+_code(code_val="BW")          # eaCodeType — for codes, IDs, numbers
+_str_ex("some text")          # String_ex — for text fields
+_bool_ex(True)                # Bool_ex
+_int_ex(5)                    # Int_ex
+_double_ex(1.5)               # Double_ex
+_date_ex("2025-06-01")        # DateTime_ex (also accepts None → current time)
+```
+
+### Serialization
+
+```python
+_serialize(zeep_obj)   # recursively converts zeep response objects to plain dicts/lists
+```
+
+Always call `_serialize()` on every SOAP response before returning it from a tool.
+
+### Input Validators
+
+```python
+_validate_required(value, field_name)               # raises ValueError if empty/None
+_validate_str_len(value, field_name, max_len)        # raises ValueError if too long
+_validate_iso_date(value, field_name)               # raises ValueError if not ISO date
+_validate_positive(value, field_name)               # raises ValueError if negative
+_validate_meter_date_tolerance(read_date, bill_date) # ±27 day billing window check
+```
+
+## Error Handling — How It Works
+
+**Do not add try/except inside individual tools.** All error handling is automatic.
+
+`mcp.tool` is patched so every `@mcp.tool()` function is automatically wrapped by `_safe()`, which:
+- Catches `ZeepFault` (SOAP errors) → returns `{"error": "...", "type": "SOAPFault", "detail": "..."}`
+- Catches `ConnectionError` / `Timeout` → drops the cached client, retries once, then returns `{"error": "...", "type": "ConnectionError"}`
+- Catches `ValueError` (from validators) → returns `{"error": "...", "type": "ValueError"}`
+- Catches anything else → returns `{"error": "...", "type": "<ExceptionClassName>"}`
+
+## Adding a New Tool
+
+```python
+@mcp.tool()
+def my_new_tool(param: str, optional_param: Optional[str] = None) -> dict:
+    """
+    One-line summary.
+
+    Args:
+        param: Description
+        optional_param: Description (optional)
+    """
+    _validate_required(param, "param")   # add validators for required fields
+    result = _client().service.someSOAPMethod(
+        Auth=_auth(),
+        SomeField=_code(code_val=param),
+        OtherField=_str_ex(optional_param or ""),
+    )
+    return _serialize(result)
+```
+
+Rules:
+- Always call `_auth()` first in the SOAP call
+- Always `_serialize()` the result
+- Use the right extended type wrapper for each field
+- Let validators raise `ValueError` — `_safe` catches it automatically
+- No try/except inside the function
+
+## Tool Sections in server.py
+
+| Section | Approx. Lines | Coverage |
+|---------|--------------|----------|
+| Helpers & error handling | 1–200 | `_client`, `_auth`, `_safe`, validators, type wrappers |
+| Codes / lists | ~200–350 | `get_code_list`, `get_technician_list`, etc. |
+| Customers | ~350–500 | `get_customer`, `search_customers_by_name`, `add_customer` |
+| Equipment | ~500–700 | `get_equipment`, `add_equipment`, `find_equipment_by_serial` |
+| Contracts | ~700–850 | `get_contract`, `get_contracts_for_customer` |
+| Meters | ~850–970 | `submit_meter_reading`, `get_meters_due_for_customer` |
+| Service Calls | ~970–1240 | `add_service_call`, `dispatch_call`, `cancel_service_call`, hold tools, filtered lists |
+| Inventory / Items | ~1240–1500 | `get_item`, `add_item`, `get_item_inventory`, `get_item_price` |
+| Purchase Orders | ~1500–1700 | `add_purchase_order`, `receive_purchase_order` |
+| Vendors | ~1700–1900 | `get_vendor`, `search_vendors_by_name`, `add_item_vendor` |
+| GL / AP / AR | ~1900–2200 | `add_ar_receipt`, `add_ap_voucher`, GL account tools |
+
+## Skills
+
+Four project-level skills in `.claude/skills/` (also mirrored at `~/.claude/plugins/...`):
+
+| Skill | Covers |
+|-------|--------|
+| `eautomate-dispatch` | Service call lifecycle, dispatching, hold/cancel, open call queries |
+| `eautomate-meters` | Meter reading submission, what's due, rollover/high-read handling |
+| `eautomate-contracts` | Contract lookup, billing preview, overage, proration |
+| `eautomate-purchasing` | PO creation, receiving, vendor pricing, inventory checks |
+
+Two additional skills come from Anthropic's remote channel (`anthropic-skills:eautomate-service`, `anthropic-skills:eautomate-finance`).
+
+## eAutomate Business Rules (Critical)
+
+- **Meter date tolerance:** ±27 days from billing cycle date — validated by `_validate_meter_date_tolerance`
+- **Caller field:** max 255 chars
+- **Description field:** max 2048 chars
+- **PO number:** max 15 chars
+- **Service call status flow:** Pending → Scheduled → Dispatched → Complete → Cleared → OK to Invoice → Invoiced
+- **Cancel/hold codes:** must be valid codes from eAutomate — use `get_code_list("cancel_codes")` / `get_code_list("hold_codes")`
+- **PO completion:** at least one line must be received (not just canceled) for Completed status
+- **Contract billing preview** is desktop-only — the MCP can gather data but cannot run the preview
+
+## WSDL Reference
+
+`wsdl service description.txt` in the project root contains the full SOAP service definition. Search it to find method names and field types before adding new tools.
+
+Key patterns:
+- Method names use camelCase: `getCall`, `addCall`, `setCallDispatched`
+- Fields use `eaCodeType` for codes/IDs (use `_code()`), `String_ex` for text (use `_str_ex()`), `DateTime_ex` for dates (use `_date_ex()`)
+- When no dedicated method exists for a filter (e.g. calls by customer), fetch the full list and filter client-side
