@@ -164,11 +164,11 @@ def _double_ex(value: float = 0.0) -> dict:
 
 
 def _date_ex(iso_str: Optional[str] = None) -> dict:
-    valid = iso_str is not None
+    value = iso_str or datetime.now().isoformat()
     return {
-        "Value":         iso_str or "1900-01-01T00:00:00",
-        "ValueAsString": _str_ex(iso_str or ""),
-        "Valid":         valid,
+        "Value":         value,
+        "ValueAsString": _str_ex(value),
+        "Valid":         True,
     }
 
 
