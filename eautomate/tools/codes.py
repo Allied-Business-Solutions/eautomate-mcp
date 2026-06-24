@@ -1,6 +1,6 @@
 """eAutomate MCP — utility / auth tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
 from typing import Optional
 from datetime import datetime
 
@@ -61,41 +61,41 @@ def get_code_list(code_type: str) -> list:
     """
     c = _client()
     a = _auth()
-    ts = {"TimeStamp": None}
+    kw = _ts()
 
     dispatch = {
-        "service_codes":        lambda: c.service.getServiceCodeList(Auth=a, **ts),
-        "sales_codes":          lambda: c.service.getSalesCodeList(Auth=a, **ts),
-        "sales_order_types":    lambda: c.service.getSalesOrderTypeList(Auth=a, **ts),
-        "sales_order_statuses": lambda: c.service.getSalesOrderStatusList(Auth=a, **ts),
-        "gl_branches":          lambda: c.service.getGLBranchList(Auth=a, **ts),
-        "tax_codes":            lambda: c.service.getTaxCodeList(Auth=a, **ts),
-        "inventory_codes":      lambda: c.service.getInventoryCodeList(Auth=a, **ts),
-        "priorities":           lambda: c.service.getPriorityList(Auth=a, **ts),
-        "territories":          lambda: c.service.getTerritoryList(Auth=a, **ts),
-        "equipment_codes":      lambda: c.service.getEquipmentCodeList(Auth=a, **ts),
-        "categories":           lambda: c.service.getCategoryList(Auth=a, **ts),
-        "makes":                lambda: c.service.getMakeList(Auth=a, **ts),
-        "models":               lambda: c.service.getModelList(Auth=a, **ts),
-        "meter_sources":        lambda: c.service.getMeterSourceList(Auth=a, **ts),
-        "meter_types":          lambda: c.service.getMeterTypeList(Auth=a, **ts),
-        "call_types":           lambda: c.service.getCallTypeList(Auth=a, **ts),
-        "hold_codes":           lambda: c.service.getHoldCodeList(Auth=a, **ts),
-        "call_statuses":        lambda: c.service.getCallStatusList(Auth=a, **ts),
-        "cancel_codes":         lambda: c.service.getCancelCodeList(Auth=a, **ts),
-        "incomplete_codes":     lambda: c.service.getIncompleteCodeList(Auth=a, **ts),
+        "service_codes":        lambda: c.service.getServiceCodeList(Auth=a, **kw),
+        "sales_codes":          lambda: c.service.getSalesCodeList(Auth=a, **kw),
+        "sales_order_types":    lambda: c.service.getSalesOrderTypeList(Auth=a, **kw),
+        "sales_order_statuses": lambda: c.service.getSalesOrderStatusList(Auth=a, **kw),
+        "gl_branches":          lambda: c.service.getGLBranchList(Auth=a, **kw),
+        "tax_codes":            lambda: c.service.getTaxCodeList(Auth=a, **kw),
+        "inventory_codes":      lambda: c.service.getInventoryCodeList(Auth=a, **kw),
+        "priorities":           lambda: c.service.getPriorityList(Auth=a, **kw),
+        "territories":          lambda: c.service.getTerritoryList(Auth=a, **kw),
+        "equipment_codes":      lambda: c.service.getEquipmentCodeList(Auth=a, **kw),
+        "categories":           lambda: c.service.getCategoryList(Auth=a, **kw),
+        "makes":                lambda: c.service.getMakeList(Auth=a, **kw),
+        "models":               lambda: c.service.getModelList(Auth=a, **kw),
+        "meter_sources":        lambda: c.service.getMeterSourceList(Auth=a, **kw),
+        "meter_types":          lambda: c.service.getMeterTypeList(Auth=a, **kw),
+        "call_types":           lambda: c.service.getCallTypeList(Auth=a, **kw),
+        "hold_codes":           lambda: c.service.getHoldCodeList(Auth=a, **kw),
+        "call_statuses":        lambda: c.service.getCallStatusList(Auth=a, **kw),
+        "cancel_codes":         lambda: c.service.getCancelCodeList(Auth=a, **kw),
+        "incomplete_codes":     lambda: c.service.getIncompleteCodeList(Auth=a, **kw),
         "delivery_methods":     lambda: c.service.getDeliveryMethodList(Auth=a),
-        "technicians":          lambda: c.service.getTechnicianList(Auth=a, **ts),
-        "bill_codes":           lambda: c.service.getBillCodeList(Auth=a, **ts),
-        "warehouses":           lambda: c.service.getWarehouseList(Auth=a, **ts),
-        "bins":                 lambda: c.service.getBinList(Auth=a, **ts),
-        "ship_methods":         lambda: c.service.getShipMethodList(Auth=a, **ts),
-        "terms":                lambda: c.service.getTermList(Auth=a, **ts),
-        "on_hold_codes":        lambda: c.service.getOnHoldCodeList(Auth=a, **ts),
-        "repair_codes":         lambda: c.service.getRepairCodeList(Auth=a, **ts),
-        "problem_codes":        lambda: c.service.getProblemCodeList(Auth=a, **ts),
-        "expense_codes":        lambda: c.service.getExpenseCodeList(Auth=a, **ts),
-        "units":                lambda: c.service.getUnitList(Auth=a, **ts),
+        "technicians":          lambda: c.service.getTechnicianList(Auth=a, **kw),
+        "bill_codes":           lambda: c.service.getBillCodeList(Auth=a, **kw),
+        "warehouses":           lambda: c.service.getWarehouseList(Auth=a, **kw),
+        "bins":                 lambda: c.service.getBinList(Auth=a, **kw),
+        "ship_methods":         lambda: c.service.getShipMethodList(Auth=a, **kw),
+        "terms":                lambda: c.service.getTermList(Auth=a, **kw),
+        "on_hold_codes":        lambda: c.service.getOnHoldCodeList(Auth=a, **kw),
+        "repair_codes":         lambda: c.service.getRepairCodeList(Auth=a, **kw),
+        "problem_codes":        lambda: c.service.getProblemCodeList(Auth=a, **kw),
+        "expense_codes":        lambda: c.service.getExpenseCodeList(Auth=a, **kw),
+        "units":                lambda: c.service.getUnitList(Auth=a, **kw),
     }
     fn = dispatch.get(code_type.lower())
     if fn is None:

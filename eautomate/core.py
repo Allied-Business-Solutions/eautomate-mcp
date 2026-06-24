@@ -135,8 +135,9 @@ def _auth() -> dict:
 
 
 def _ts(value: Optional[str] = None) -> dict:
-    """Return a TimeStamp kwarg dict — passes empty string when no value given."""
-    return {"TimeStamp": value if value is not None else ""}
+    """Return a TimeStamp kwarg dict — passes a minimal timestamp when no value given.
+    The API's WS_Common.getTermList cannot handle an empty string for TimeStamp."""
+    return {"TimeStamp": value if value is not None else "1900-01-01T00:00:00"}
 
 
 def _code(id_val=None, code_val=None) -> dict:
@@ -172,16 +173,29 @@ def _date_ex(iso_str: Optional[str] = None) -> dict:
 
 
 def _serialize(obj) -> object:
-    """Recursively convert zeep objects to plain dicts/lists for JSON safety."""
-    if obj is None:
-        return None
-    if hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes)):
-        return [_serialize(i) for i in obj]
-    if hasattr(obj, "__dict__"):
-        return {k: _serialize(v) for k, v in obj.__dict__.items()
-                if not k.startswith("_")}
-    if hasattr(obj, "isoformat"):          # datetime / date
-        return obj.isoformat()
+    """Convert zeep response objects to plain Python dicts/lists for JSON safety.
+    Uses zeep's serialize_object for CompoundValues, then unwraps eAutomate's
+    standard list-response wrapper {TimeStamp, Details: {EntityName: [...]}}."""
+    from zeep.helpers import serialize_object
+    raw = serialize_object(obj)
+    return _unwrap(raw)
+
+
+def _unwrap(obj) -> object:
+    """Recursively unwrap eAutomate list-response wrappers from already-plain data."""
+    if isinstance(obj, dict):
+        # Unwrap: {TimeStamp: ..., Details: {EntityName: [...]}} → [...]
+        if set(obj.keys()) == {"TimeStamp", "Details"}:
+            details = obj["Details"]
+            if isinstance(details, list):
+                return [_unwrap(i) for i in details]
+            if isinstance(details, dict):
+                for v in details.values():
+                    if isinstance(v, list):
+                        return [_unwrap(i) for i in v]
+        return {k: _unwrap(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_unwrap(i) for i in obj]
     return obj
 
 
