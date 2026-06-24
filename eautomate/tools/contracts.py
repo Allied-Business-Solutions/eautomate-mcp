@@ -30,6 +30,7 @@ def get_contracts_for_customer(customer_number: str) -> list:
     """
     return _serialize(_client().service.getContractListForCustomer(
         Auth=_auth(),
+        **_ts(),
         CustomerNumber=_code(code_val=customer_number),
     ))
 
