@@ -188,7 +188,22 @@ On connection errors the server automatically drops its cached session and retri
 ## Project Structure
 
 ```
-server.py                   # All 65+ MCP tools
+server.py                   # Entry point (18 lines) — imports modules, runs MCP
+eautomate/
+  core.py                   # Client, auth, error handling, logging, validators
+  tools/
+    codes.py                # ping, authorize, get_code_list
+    customers.py            # customer CRUD, contacts
+    equipment.py            # equipment CRUD, makes, models
+    meters.py               # meter readings, due lists
+    service_calls.py        # open/dispatch/cancel/hold, filtered lists
+    inventory.py            # items, inventory, vendor pricing
+    purchase_orders.py      # PO create, receive, status
+    sales.py                # sales orders and invoices
+    vendors.py              # vendor lookup and pricing
+    contracts.py            # contract lookup
+    technicians.py          # technician records, availability, GPS
+    finance.py              # GL journals, AP vouchers, AR receipts
 requirements.txt
 .env                        # Your credentials — never committed
 CLAUDE.md                   # Developer guide for adding tools
@@ -200,4 +215,4 @@ CLAUDE.md                   # Developer guide for adding tools
     eautomate-purchasing/
 ```
 
-See [CLAUDE.md](CLAUDE.md) for the full developer guide — how helpers work, how to add new tools, and the section map of server.py.
+See [CLAUDE.md](CLAUDE.md) for the full developer guide — how helpers work and how to add new tools.

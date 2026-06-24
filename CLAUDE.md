@@ -99,21 +99,28 @@ Rules:
 - Let validators raise `ValueError` — `_safe` catches it automatically
 - No try/except inside the function
 
-## Tool Sections in server.py
+## Package Structure
 
-| Section | Approx. Lines | Coverage |
-|---------|--------------|----------|
-| Helpers & error handling | 1–200 | `_client`, `_auth`, `_safe`, validators, type wrappers |
-| Codes / lists | ~200–350 | `get_code_list`, `get_technician_list`, etc. |
-| Customers | ~350–500 | `get_customer`, `search_customers_by_name`, `add_customer` |
-| Equipment | ~500–700 | `get_equipment`, `add_equipment`, `find_equipment_by_serial` |
-| Contracts | ~700–850 | `get_contract`, `get_contracts_for_customer` |
-| Meters | ~850–970 | `submit_meter_reading`, `get_meters_due_for_customer` |
-| Service Calls | ~970–1240 | `add_service_call`, `dispatch_call`, `cancel_service_call`, hold tools, filtered lists |
-| Inventory / Items | ~1240–1500 | `get_item`, `add_item`, `get_item_inventory`, `get_item_price` |
-| Purchase Orders | ~1500–1700 | `add_purchase_order`, `receive_purchase_order` |
-| Vendors | ~1700–1900 | `get_vendor`, `search_vendors_by_name`, `add_item_vendor` |
-| GL / AP / AR | ~1900–2200 | `add_ar_receipt`, `add_ap_voucher`, GL account tools |
+```
+server.py                    # Entry point — 18 lines, just imports modules and runs
+eautomate/
+  core.py                    # Client, auth, helpers, error handling, logging, validators
+  tools/
+    codes.py                 # ping, authorize, get_code_list
+    customers.py             # get_customer, search, add, save, contacts
+    equipment.py             # get_equipment, add, save, makes, models
+    meters.py                # submit_meter_reading, get_meters_due, counts
+    service_calls.py         # add, dispatch, cancel, hold, filtered lists
+    inventory.py             # get_item, add, inventory levels, vendor pricing
+    purchase_orders.py       # add, receive, get, update_to_placed
+    sales.py                 # get/add sales orders, invoices
+    vendors.py               # get_vendor, search, set_cost
+    contracts.py             # get_contract, get_contracts_for_customer
+    technicians.py           # get_technician, availability, GPS
+    finance.py               # GL journals, AP vouchers, AR receipts
+```
+
+To add a new tool, create or edit the relevant module in `eautomate/tools/`. Do not put tools in `server.py`.
 
 ## Skills
 
