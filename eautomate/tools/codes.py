@@ -35,9 +35,9 @@ def authorize(username: Optional[str] = None, password: Optional[str] = None) ->
         auth["User"] = username
     if password:
         auth["Password"] = password
-    result = _client().service.Authorize2(Auth=auth)
+    result = _serialize(_client().service.Authorize2(Auth=auth))
     return {
-        "Authenticated": bool(result["Authorize2Result"]),
+        "Authenticated": bool(result.get("Authorize2Result")),
         "Error":         result.get("ErrorString") or "",
     }
 
