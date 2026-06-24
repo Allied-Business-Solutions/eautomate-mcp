@@ -129,7 +129,7 @@ def _auth() -> dict:
         "User":         EA_API_USER,
         "Password":     EA_API_PASS,
         "CompanyID":    EA_API_COMPANY,
-        "Version":      None,
+        "Version":      "20.1",
         "PartnerToken": None,
     }
 
