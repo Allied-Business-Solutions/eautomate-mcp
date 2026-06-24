@@ -47,6 +47,7 @@ def get_technician_availability(technician_code: str,
     dt = start_date or datetime.now().date().isoformat()
     return _serialize(_client().service.getTechnicianAvailability(
         Auth=_auth(),
+        **_ts(),
         Technician=_code(code_val=technician_code),
         optStartDate=_date_ex(dt),
     ))
