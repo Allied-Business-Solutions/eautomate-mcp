@@ -168,14 +168,11 @@ def _date_ex(iso_str: Optional[str] = None) -> dict:
     # xs:dateTime requires a full datetime string; pad date-only values
     if len(raw) == 10:
         raw = raw + "T00:00:00"
-    result = {
+    return {
         "Value":         raw,
         "ValueAsString": _str_ex(raw),
         "Valid":         True,
     }
-    import sys
-    print(f"DEBUG _date_ex: input={iso_str!r}  raw={raw!r}  output={result!r}", file=sys.stderr, flush=True)
-    return result
 
 
 def _serialize(obj) -> object:
