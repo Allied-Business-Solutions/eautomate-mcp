@@ -102,10 +102,9 @@ def add_ap_voucher(vendor_number: str,
     _validate_positive(total, "total")
     _validate_iso_date(invoice_date, "invoice_date")
 
-    # Use vendor invoice number as the voucher reference — unique per vendor and
-    # avoids the unique-index collision that occurs when Code="" conflicts with
-    # existing voided vouchers that also have an empty reference.
-    voucher_ref = _code(code_val=vendor_invoice_number)
+    # Use vendor invoice number as the voucher reference (truncated to 15 chars
+    # to fit APVouchers.VoucherNumber column width — typical eAutomate limit).
+    voucher_ref = _code(code_val=vendor_invoice_number[:15])
 
     details = []
     for li in gl_line_items:
