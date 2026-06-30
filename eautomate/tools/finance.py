@@ -108,13 +108,13 @@ def add_ap_voucher(vendor_number: str,
         credit = li.get("credit", 0.0)
         amount = debit - credit
         details.append({
-            "VoucherNumber":  _code(),
+            "VoucherNumber":  None,
             "TransactionType": 0,
             "Description":    _str_ex(li.get("description", "")),
             "GLAccount":      _code(code_val=li["gl_account"]),
             "GLDept":         _code(code_val=li.get("gl_dept", "")),
             "GLBranch":       _code(code_val=li.get("gl_branch", "")),
-            "GLDivision":     _code(),
+            "GLDivision":     _code(id_val=1),
             "Amount":         {"Value": amount, "Valid": True},
             "CreditAmount":   {"Value": credit, "Valid": True},
             "DebitAmount":    {"Value": debit,  "Valid": True},
@@ -123,7 +123,7 @@ def add_ap_voucher(vendor_number: str,
     result = _client().service.AddAPVoucher(
         Auth=_auth(),
         voucher={
-            "VoucherNumber":       _code(),
+            "VoucherNumber":       None,
             "VendorNumber":        _code(code_val=vendor_number),
             "VendorInvoiceNumber": _str_ex(vendor_invoice_number),
             "Total":               {"Value": total, "Valid": True},

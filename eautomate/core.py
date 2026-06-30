@@ -164,10 +164,13 @@ def _double_ex(value: float = 0.0) -> dict:
 
 
 def _date_ex(iso_str: Optional[str] = None) -> dict:
-    value = iso_str or datetime.now().isoformat()
+    raw = iso_str or datetime.now().isoformat()
+    # xs:dateTime requires a full datetime string; pad date-only values
+    if len(raw) == 10:
+        raw = raw + "T00:00:00"
     return {
-        "Value":         value,
-        "ValueAsString": _str_ex(value),
+        "Value":         raw,
+        "ValueAsString": _str_ex(raw),
         "Valid":         True,
     }
 
