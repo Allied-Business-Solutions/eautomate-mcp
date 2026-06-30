@@ -129,7 +129,7 @@ def add_ap_voucher(vendor_number: str,
         voucher={
             "VoucherNumber":       voucher_ref,
             "VendorNumber":        _code(code_val=vendor_number),
-            "VendorInvoiceNumber": _str_ex(vendor_invoice_number),
+            "VendorInvoiceNumber": _str_ex(vendor_invoice_number[:30]),
             "Total":               {"Value": total, "Valid": True},
             "Date":                _date_ex(invoice_date),
             "Description":         _str_ex(description),
