@@ -31,6 +31,7 @@ EA_API_URL     = os.getenv("EA_API_URL",     "")
 EA_API_USER    = os.getenv("EA_API_USER",    "")
 EA_API_PASS    = os.getenv("EA_API_PASS",    "")
 EA_API_COMPANY = os.getenv("EA_API_COMPANY", "")
+EA_DB_CONN     = os.getenv("EA_DB_CONN",     "")
 
 mcp = FastMCP("eautomate", dependencies=["zeep", "python-dotenv", "requests"])
 
@@ -244,6 +245,22 @@ def _validate_meter_date_tolerance(reading_date: str, billing_date: str, toleran
 def _validate_positive(value: float, field: str):
     if value < 0:
         raise ValueError(f"'{field}' must be a non-negative number, got {value}.")
+
+
+def _next_ap_voucher_number() -> str:
+    """Query the DB for the next sequential AP voucher number."""
+    import pyodbc
+    with pyodbc.connect(EA_DB_CONN) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT MAX(TRY_CAST(VoucherNumber AS INT)) + 1 "
+            "FROM APVouchers "
+            "WHERE VoucherNumber NOT LIKE '%.%' "
+            "  AND ISNUMERIC(VoucherNumber) = 1"
+        )
+        row = cursor.fetchone()
+    next_num = row[0] if row and row[0] is not None else 100001
+    return str(next_num)
 
 
 def _validate_required(value, field: str):
