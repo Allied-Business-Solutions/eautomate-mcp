@@ -102,13 +102,18 @@ def add_ap_voucher(vendor_number: str,
     _validate_positive(total, "total")
     _validate_iso_date(invoice_date, "invoice_date")
 
+    # Use vendor invoice number as the voucher reference — unique per vendor and
+    # avoids the unique-index collision that occurs when Code="" conflicts with
+    # existing voided vouchers that also have an empty reference.
+    voucher_ref = _code(code_val=vendor_invoice_number)
+
     details = []
     for li in gl_line_items:
         debit  = li.get("debit",  0.0)
         credit = li.get("credit", 0.0)
         amount = debit - credit
         details.append({
-            "VoucherNumber":  None,
+            "VoucherNumber":  voucher_ref,
             "TransactionType": 0,
             "Description":    _str_ex(li.get("description", "")),
             "GLAccount":      _code(code_val=li["gl_account"]),
@@ -123,7 +128,7 @@ def add_ap_voucher(vendor_number: str,
     result = _client().service.AddAPVoucher(
         Auth=_auth(),
         voucher={
-            "VoucherNumber":       None,
+            "VoucherNumber":       voucher_ref,
             "VendorNumber":        _code(code_val=vendor_number),
             "VendorInvoiceNumber": _str_ex(vendor_invoice_number),
             "Total":               {"Value": total, "Valid": True},
