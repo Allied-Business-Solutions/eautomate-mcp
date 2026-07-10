@@ -200,6 +200,8 @@ def _unwrap(obj) -> object:
         return {k: _unwrap(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_unwrap(i) for i in obj]
+    if isinstance(obj, datetime):
+        return obj.isoformat()
     return obj
 
 

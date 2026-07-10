@@ -36,14 +36,44 @@ def get_contracts_for_customer(customer_number: str) -> list:
 
 
 @mcp.tool()
-def get_contract(contract_number: str) -> dict:
+def get_contract(contract_number: str, customer_number: Optional[str] = None) -> dict:
     """
     Full contract detail including equipment list and meter groups.
 
+    Providing customer_number is strongly recommended — it limits the ID lookup
+    to that customer's contracts instead of scanning all 15,000+ in the system.
+
     Args:
-        contract_number: Contract number code
+        contract_number: Contract number code (e.g. CN7084-01)
+        customer_number: Customer code (optional but recommended for speed)
     """
+    _validate_required(contract_number, "contract_number")
+
+    # getContract resolves only by numeric ID, not by code — look it up first.
+    if customer_number:
+        list_result = _serialize(_client().service.getContractListForCustomer(
+            Auth=_auth(),
+            **_ts(),
+            CustomerNumber=_code(code_val=customer_number),
+        ))
+    else:
+        list_result = _serialize(_client().service.getContractList(
+            Auth=_auth(),
+            **_ts(),
+        ))
+    contracts = list_result if isinstance(list_result, list) else []
+    contract_id = None
+    for c in contracts:
+        try:
+            if c["ContractNumber"]["Code"]["Value"] == contract_number:
+                contract_id = c["ContractNumber"]["ID"]["Value"]
+                break
+        except (KeyError, TypeError):
+            continue
+    if contract_id is None:
+        return {"error": f"Contract '{contract_number}' not found.", "type": "NotFound"}
+
     return _serialize(_client().service.getContract(
         Auth=_auth(),
-        ContractNumber=_code(code_val=contract_number),
+        ContractNumber=_code(id_val=contract_id),
     ))
