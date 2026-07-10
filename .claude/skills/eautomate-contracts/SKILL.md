@@ -44,6 +44,19 @@ get_contract(contract_number, customer_number)   # always pass customer_number
 get_contract_list(since_timestamp=...)   # use a timestamp to limit results
 ```
 
+**CPC rates and overage tiers (not in SOAP API — reads DB directly):**
+```
+get_contract_meter_groups(contract_number)
+```
+Returns covered copies, base rate per copy, overage rate, and range tiers for each meter group.
+
+**Billing history by period — base charges, overages, copy volumes (reads DB directly):**
+```
+get_contract_billing_history(contract_number, from_date, to_date)
+```
+Returns one row per billing period × meter group. Equivalent to E-Views Contract Analytics.
+Use this for annualized cost/overage reports, year-over-year comparisons, and department breakdowns.
+
 ---
 
 ## Workflow: Checking What Equipment Is on a Contract
@@ -117,8 +130,11 @@ Some contracts are flagged "bill immediately" — these appear in the Contract B
 | "Is equipment E-001 on a contract?" | `get_equipment("E-001")` — check contract number field |
 | "When does contract C-500 bill next?" | `get_contract("C-500", customer_number)` — look at base/overage billing dates |
 | "What meters are needed before billing?" | `get_meters_due_for_customer(customer_number)` |
-| "Show me the overage rate for this contract" | `get_contract(contract_number, customer_number)` — check equipment overage rate |
+| "Show me the overage rate / CPC rate for this contract" | `get_contract_meter_groups(contract_number)` — returns per-copy rates and overage tiers |
 | "What's covered under this contract?" | `get_contract(contract_number, customer_number)` — equipment list with covered copies |
+| "How much did we bill in overages last year?" | `get_contract_billing_history(contract_number, from_date, to_date)` |
+| "Show me the 2024 billing history / annualized cost report" | `get_contract_billing_history(contract_number, "2024-01-01", "2024-12-31")` |
+| "What were the copy volumes by period?" | `get_contract_billing_history(contract_number, from_date, to_date)` — counted_copies, billable_copies per meter group |
 
 ---
 
