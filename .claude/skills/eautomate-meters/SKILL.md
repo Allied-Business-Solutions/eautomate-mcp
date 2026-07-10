@@ -96,12 +96,19 @@ Per eAutomate's rules: meter reading dates must be within **±27 days** of the c
 
 ## Workflow: Checking Meter History
 
-Use `get_equipment(equipment_number)` — the equipment record includes meter information.
+**Current snapshot only** (most recent reading per meter):
+```
+get_equipment(equipment_number)
+```
 
-For the full meter reading console view, use:
+**Historical readings over a date range (DB-backed):**
 ```
-get_meters_due_for_customer(customer_number)
+get_equipment_meter_history(from_date, to_date, equipment_number=...)   # single device
+get_equipment_meter_history(from_date, to_date, customer_number=...)    # all devices for customer
 ```
+Returns one row per reading event per meter type: `equipment_number`, `reading_date`, `meter_type`, `reading_value`, `was_used_for_billing`, `is_estimate`, `is_valid_for_billing`.
+
+To calculate **monthly copy volume** from this data, compute the delta between consecutive readings for the same equipment + meter type. This is how you determine which machines are driving pool overage.
 
 ---
 
@@ -115,6 +122,8 @@ get_meters_due_for_customer(customer_number)
 | "The reading went down — it's a rollover" | `submit_meter_reading(..., override_previous=True)` after confirming with user |
 | "How many meters does [customer] have due?" | `get_meter_due_count(customer_number)` |
 | "Enter an estimated read" | `submit_meter_reading(..., meter_source_code="Estimated")` |
+| "Show me meter readings for equipment X over 2024" | `get_equipment_meter_history("2024-01-01", "2024-12-31", equipment_number="X")` |
+| "Which machines are driving overage / per-device volume" | `get_equipment_meter_history(from_date, to_date, customer_number=...)` then compute deltas |
 
 ---
 
