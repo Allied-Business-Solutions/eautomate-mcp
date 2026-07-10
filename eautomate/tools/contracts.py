@@ -174,7 +174,6 @@ def get_contract_billing_history(contract_number: str,
     _validate_iso_date(to_date, "to_date")
     with pyodbc.connect(EA_DB_CONN) as conn:
         cur = conn.cursor()
-        contract_id = _resolve_contract_id(contract_number, cur)
         cur.execute(
             """
             SELECT
@@ -194,17 +193,19 @@ def get_contract_billing_history(contract_number: str,
                 bmg.OverageAmount           AS mg_overage_amount,
                 bmg.EffectiveRate           AS effective_rate
             FROM SCBillingContracts bc
-            JOIN SCContractDetails cd
-                ON bc.ContractDetailID = cd.ContractDetailID
+            JOIN ARInvoices ai ON bc.InvoiceID = ai.InvoiceID
             JOIN SCBillingMeterGroups bmg
                 ON bmg.InvoiceID = bc.InvoiceID
                AND bmg.ContractDetailID = bc.ContractDetailID
-            WHERE cd.ContractID = ?
+            JOIN SCContractMeterGroups cmg
+                ON bmg.ContractMeterGroupID = cmg.ContractMeterGroupID
+            JOIN SCContracts sc ON cmg.ContractID = sc.ContractID
+            WHERE sc.ContractNumber = ?
               AND bc.BaseFromDate >= ?
               AND bc.BaseFromDate <= ?
             ORDER BY bc.BaseFromDate, bmg.ContractMeterGroup
             """,
-            contract_id, from_date, to_date,
+            contract_number, from_date, to_date,
         )
         cols = [d[0] for d in cur.description]
         rows = []
