@@ -35,8 +35,9 @@ search_customers_by_name(name)
 
 **Full contract detail (equipment, meter groups, billing rates):**
 ```
-get_contract(contract_number)
+get_contract(contract_number, customer_number)   # always pass customer_number
 ```
+> **Important:** Always pass `customer_number` alongside `contract_number`. Without it, the tool must scan all 15,000+ contracts system-wide to resolve the internal ID, which is slow. Omitting it also risks a timeout that returns all-null data.
 
 **All contracts (system-wide, potentially large):**
 ```
@@ -114,10 +115,10 @@ Some contracts are flagged "bill immediately" — these appear in the Contract B
 |-----------|-----------|
 | "What contracts does [customer] have?" | `get_contracts_for_customer(customer_number)` |
 | "Is equipment E-001 on a contract?" | `get_equipment("E-001")` — check contract number field |
-| "When does contract C-500 bill next?" | `get_contract("C-500")` — look at base/overage billing dates |
+| "When does contract C-500 bill next?" | `get_contract("C-500", customer_number)` — look at base/overage billing dates |
 | "What meters are needed before billing?" | `get_meters_due_for_customer(customer_number)` |
-| "Show me the overage rate for this contract" | `get_contract(contract_number)` — check equipment overage rate |
-| "What's covered under this contract?" | `get_contract(contract_number)` — equipment list with covered copies |
+| "Show me the overage rate for this contract" | `get_contract(contract_number, customer_number)` — check equipment overage rate |
+| "What's covered under this contract?" | `get_contract(contract_number, customer_number)` — equipment list with covered copies |
 
 ---
 
@@ -137,5 +138,6 @@ If a tool returns `{"error": ..., "type": ...}`:
 - `SOAPFault` — eAutomate rejected the request. Share the error message; it usually describes the business rule violation.
 - `ConnectionError` / `Timeout` — API unreachable; check the server.
 - Empty list returned — customer may have no contracts, or the contract number may be wrong.
+- All-null contract fields (`Valid: false` on everything) — `get_contract` was called without `customer_number` and the system-wide ID lookup timed out or failed to match. Retry with `customer_number` included.
 
 Always confirm contract numbers with the user before taking billing actions — contract billing affects invoicing and cannot easily be undone.
