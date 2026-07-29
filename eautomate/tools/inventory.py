@@ -173,6 +173,142 @@ def add_item(item_number: str,
 
 
 @mcp.tool()
+def save_item(item_number: str,
+              description: Optional[str] = None,
+              cost: Optional[float] = None,
+              active: Optional[bool] = None,
+              remarks: Optional[str] = None,
+              sales_code: Optional[str] = None,
+              inventory_code: Optional[str] = None,
+              service_code: Optional[str] = None,
+              equipment_code: Optional[str] = None,
+              unit_of_measure_code: Optional[str] = None,
+              model_code: Optional[str] = None) -> dict:
+    """
+    Update an existing inventory item. Fetches the current record and overlays
+    only the fields you supply.
+
+    Args:
+        item_number: Item number (required, identifies the record)
+        description: New description (optional)
+        cost: New unit cost (optional)
+        active: Active flag (optional)
+        remarks: Remarks text (optional)
+        sales_code: Sales code (optional)
+        inventory_code: Inventory code (optional)
+        service_code: Service code (optional)
+        equipment_code: Equipment code (optional)
+        unit_of_measure_code: Unit of measure code (optional)
+        model_code: Model code (optional)
+    """
+    _validate_required(item_number, "item_number")
+    cur = _client().service.getItem(Auth=_auth(), Item=_code(code_val=item_number))
+    if cur is None:
+        raise ValueError(f"Item '{item_number}' not found")
+
+    def _pick(new_val, cur_field):
+        return new_val if new_val is not None else cur_field
+
+    def _pick_code(new_val, cur_field):
+        return _code(code_val=new_val) if new_val is not None else (cur_field or _code())
+
+    result = _client().service.saveItem(
+        Auth=_auth(),
+        Item={
+            "Item":             _code(code_val=item_number),
+            "Description":      _str_ex(_pick(description, cur.Description.Value if cur.Description else "")),
+            "BarCode":          cur.BarCode          or _str_ex(""),
+            "Serialized":       cur.Serialized        or _bool_ex(False),
+            "ItemType":         cur.ItemType          or _int_ex(0),
+            "SalesCode":        _pick_code(sales_code,      cur.SalesCode),
+            "InventoryCode":    _pick_code(inventory_code,  cur.InventoryCode),
+            "EquipmentCode":    _pick_code(equipment_code,  cur.EquipmentCode),
+            "ServiceCode":      _pick_code(service_code,    cur.ServiceCode),
+            "ServiceCodeCategory": cur.ServiceCodeCategory or _str_ex(""),
+            "WebEnabled":       cur.WebEnabled        or _bool_ex(False),
+            "UnitOfMeasure":    _pick_code(unit_of_measure_code, cur.UnitOfMeasure),
+            "CategoryCode":     cur.CategoryCode      or _code(),
+            "Yield":            cur.Yield             or _int_ex(1),
+            "Weight":           cur.Weight            or {"Value": 0, "Valid": False},
+            "WeightUnitOfMeasure": cur.WeightUnitOfMeasure or _code(),
+            "Make":             cur.Make              or _code(),
+            "Model":            _pick_code(model_code, cur.Model),
+            "TaxFlag":          cur.TaxFlag           or _int_ex(0),
+            "OnHandQty":        cur.OnHandQty         or {"Value": 0, "Valid": False},
+            "Ordered":          cur.Ordered           or {"Value": 0, "Valid": False},
+            "Allocated":        cur.Allocated         or {"Value": 0, "Valid": False},
+            "Active":           _bool_ex(_pick(active, cur.Active.Value if cur.Active else True)),
+            "Remarks":          _str_ex(_pick(remarks, cur.Remarks.Value if cur.Remarks else "")),
+            "StandardQty":      cur.StandardQty       or {"Value": 0, "Valid": False},
+            "DefectiveQty":     cur.DefectiveQty      or {"Value": 0, "Valid": False},
+            "UnavailableQty":   cur.UnavailableQty    or {"Value": 0, "Valid": False},
+            "Cost":             {"Value": _pick(cost, cur.Cost.Value if cur.Cost else 0), "Valid": True},
+            "MSRP":             cur.MSRP              or {"Value": 0, "Valid": False},
+            "Metered":          cur.Metered           or _bool_ex(False),
+            "VendorStatus":     cur.VendorStatus      or _str_ex(""),
+            "IntroductionDate": cur.IntroductionDate  or _date_ex(),
+            "Segment":          cur.Segment           or _str_ex(""),
+            "OEMNumber":        cur.OEMNumber         or _str_ex(""),
+            "OEMCompatible":    cur.OEMCompatible     or _bool_ex(False),
+            "Returnable":       cur.Returnable        or _bool_ex(True),
+            "TrackingConfig":   cur.TrackingConfig    or _code(),
+            "ItemTypeDescription": cur.ItemTypeDescription or _str_ex(""),
+            "PrefMfgNumber":    cur.PrefMfgNumber     or _str_ex(""),
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
+def save_item_vendor(item_number: str,
+                     vendor_number: str,
+                     vendor_mfg_number: Optional[str] = None,
+                     cost: Optional[float] = None,
+                     preferred: Optional[bool] = None,
+                     min_order: Optional[float] = None,
+                     lead_time_days: Optional[int] = None) -> dict:
+    """
+    Update an existing item-vendor relationship. Fetches the current record
+    and overlays only the fields you supply.
+
+    Args:
+        item_number: Item number code (required)
+        vendor_number: Vendor number code (required)
+        vendor_mfg_number: Vendor's part number (optional)
+        cost: Vendor cost (optional)
+        preferred: Preferred vendor flag (optional)
+        min_order: Minimum order quantity (optional)
+        lead_time_days: Lead time in days (optional)
+    """
+    _validate_required(item_number, "item_number")
+    _validate_required(vendor_number, "vendor_number")
+
+    vendors = _serialize(_client().service.getItemVendorListEx(
+        Auth=_auth(), Item=_code(code_val=item_number)
+    ))
+    cur = next((v for v in (vendors or []) if str(v.get("Vendor", {}).get("Code", "")) == vendor_number), None)
+
+    def _pick(new_val, fallback):
+        return new_val if new_val is not None else fallback
+
+    result = _client().service.saveItemVendor(
+        Auth=_auth(),
+        ItemVendor={
+            "Item":            _code(code_val=item_number),
+            "Vendor":          _code(code_val=vendor_number),
+            "VendorMfgNumber": _str_ex(_pick(vendor_mfg_number, cur["VendorMfgNumber"]["Value"] if cur and cur.get("VendorMfgNumber") else "")),
+            "PurchaseUM":      _str_ex(cur["PurchaseUM"] if cur and cur.get("PurchaseUM") else "EA"),
+            "ConvFactor":      {"Value": cur["ConvFactor"]["Value"] if cur and cur.get("ConvFactor") else 1, "Valid": True},
+            "MinOrder":        {"Value": _pick(min_order, cur["MinOrder"]["Value"] if cur and cur.get("MinOrder") else 1), "Valid": True},
+            "LeadTime":        _int_ex(_pick(lead_time_days, cur["LeadTime"]["Value"] if cur and cur.get("LeadTime") else 0)),
+            "Cost":            {"Value": _pick(cost, cur["Cost"]["Value"] if cur and cur.get("Cost") else 0), "Valid": True},
+            "Preferred":       _bool_ex(_pick(preferred, cur["Preferred"]["Value"] if cur and cur.get("Preferred") else False)),
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
 def add_item_vendor(item_number: str,
                     vendor_number: str,
                     vendor_mfg_number: str,

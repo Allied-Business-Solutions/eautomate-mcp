@@ -236,6 +236,20 @@ def save_customer(customer_number: str,
 
 
 @mcp.tool()
+def get_contact(contact_number: str) -> dict:
+    """
+    Full record for a single contact by contact number.
+
+    Args:
+        contact_number: Contact number/code
+    """
+    return _serialize(_client().service.getContact(
+        Auth=_auth(),
+        ContactNumber=_code(code_val=contact_number),
+    ))
+
+
+@mcp.tool()
 def add_contact(customer_number: str,
                 first_name: str,
                 last_name: str,
@@ -281,6 +295,84 @@ def add_contact(customer_number: str,
             "SalesRep":         _code(),
             "PreferredContactMethod": _code(),
             "ContactType":      _code(code_val=contact_type_code),
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
+def check_customer_exists(customer_number: str) -> dict:
+    """
+    Check whether a customer number already exists in e-automate.
+
+    Args:
+        customer_number: Customer code to check
+    """
+    result = _client().service.ExistsCustomer(
+        Auth=_auth(),
+        CustomerNumber=_code(code_val=customer_number),
+    )
+    return {"Exists": bool(result)}
+
+
+@mcp.tool()
+def save_contact(contact_number: str,
+                 first_name: Optional[str] = None,
+                 last_name: Optional[str] = None,
+                 phone: Optional[str] = None,
+                 email: Optional[str] = None,
+                 active: Optional[bool] = None,
+                 contact_type_code: Optional[str] = None) -> dict:
+    """
+    Update an existing contact record. Fetches the current record and overlays
+    only the fields you supply. Use get_contacts_for_customer to find the
+    contact_number.
+
+    Args:
+        contact_number: Contact number/code (required, identifies the record)
+        first_name: New first name (optional)
+        last_name: New last name (optional)
+        phone: New phone number (optional)
+        email: New email address (optional)
+        active: Active flag (optional)
+        contact_type_code: Contact type code (optional)
+    """
+    _validate_required(contact_number, "contact_number")
+    cur = _client().service.getContact(Auth=_auth(), ContactNumber=_code(code_val=contact_number))
+    if cur is None:
+        raise ValueError(f"Contact '{contact_number}' not found")
+
+    def _pick(new_val, cur_field):
+        return new_val if new_val is not None else (cur_field.Value if cur_field else "")
+
+    result = _client().service.saveContact(
+        Auth=_auth(),
+        Contact={
+            "ContactNumber":   _code(code_val=contact_number),
+            "FirstName":       _str_ex(_pick(first_name, cur.FirstName)),
+            "LastName":        _str_ex(_pick(last_name,  cur.LastName)),
+            "MiddleName":      cur.MiddleName      or _str_ex(""),
+            "PrefName":        cur.PrefName        or _str_ex(""),
+            "PrefFullName":    cur.PrefFullName    or _str_ex(""),
+            "Address":         cur.Address         or _str_ex(""),
+            "City":            cur.City            or _str_ex(""),
+            "State":           cur.State           or _str_ex(""),
+            "Zip":             cur.Zip             or _str_ex(""),
+            "Country":         cur.Country         or _str_ex(""),
+            "Phone1":          _str_ex(_pick(phone, cur.Phone1)),
+            "Phone2":          cur.Phone2          or _str_ex(""),
+            "Fax":             cur.Fax             or _str_ex(""),
+            "Email":           _str_ex(_pick(email, cur.Email)),
+            "Remarks":         cur.Remarks         or _str_ex(""),
+            "SalesRep":        cur.SalesRep        or _code(),
+            "PreferredContactMethod": cur.PreferredContactMethod or _code(),
+            "EmailType":       cur.EmailType       or _str_ex(""),
+            "IncludeMeterInstructions": cur.IncludeMeterInstructions or _bool_ex(False),
+            "ContactType":     _code(code_val=contact_type_code) if contact_type_code is not None else (cur.ContactType or _code()),
+            "ContactTypeDescription": cur.ContactTypeDescription or _str_ex(""),
+            "CustomerNumber":  cur.CustomerNumber  or _code(),
+            "CustomerName":    cur.CustomerName    or _str_ex(""),
+            "Active":          _bool_ex(active if active is not None else (cur.Active.Value if cur.Active else True)),
         }
     )
     return _serialize(result)

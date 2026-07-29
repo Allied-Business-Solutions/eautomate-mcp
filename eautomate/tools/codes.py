@@ -101,3 +101,39 @@ def get_code_list(code_type: str) -> list:
     if fn is None:
         return [{"error": f"Unknown code_type '{code_type}'. Valid: {', '.join(dispatch)}"}]
     return _serialize(fn())
+
+
+@mcp.tool()
+def get_sales_rep_list(since_timestamp: Optional[str] = None) -> list:
+    """
+    List all sales reps.
+
+    Args:
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getSalesRepList(Auth=_auth(), **_ts(since_timestamp)))
+
+
+@mcp.tool()
+def get_user_list(since_timestamp: Optional[str] = None) -> list:
+    """
+    List all e-automate users.
+
+    Args:
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getUserList(Auth=_auth(), **_ts(since_timestamp)))
+
+
+@mcp.tool()
+def get_user(username: str) -> dict:
+    """
+    Full record for a single e-automate user.
+
+    Args:
+        username: e-automate username
+    """
+    return _serialize(_client().service.getUser(
+        Auth=_auth(),
+        userName=_code(code_val=username),
+    ))

@@ -35,6 +35,119 @@ def get_sales_order(so_number: str) -> dict:
 
 
 @mcp.tool()
+def get_sales_quote_list(since_timestamp: Optional[str] = None) -> list:
+    """
+    List sales quotes updated since a timestamp (or all if omitted).
+
+    Args:
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getSalesQuoteList(Auth=_auth(), **_ts(since_timestamp)))
+
+
+@mcp.tool()
+def get_sales_quote(quote_number: str) -> dict:
+    """
+    Full sales quote including line items.
+
+    Args:
+        quote_number: Sales quote number
+    """
+    return _serialize(_client().service.getSalesQuote(
+        Auth=_auth(),
+        SalesQuoteNumber=_code(code_val=quote_number),
+    ))
+
+
+@mcp.tool()
+def get_sales_quotes_for_customer(customer_number: str,
+                                   since_timestamp: Optional[str] = None) -> list:
+    """
+    List sales quotes for a specific customer.
+
+    Args:
+        customer_number: Customer code
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getSalesQuoteListForCustomer(
+        Auth=_auth(),
+        CustomerNumber=_code(code_val=customer_number),
+        **_ts(since_timestamp),
+    ))
+
+
+@mcp.tool()
+def add_sales_quote(customer_number: str,
+                    description: str,
+                    line_items: list,
+                    po_number: str = "",
+                    due_date: Optional[str] = None,
+                    sales_rep_code: Optional[str] = None,
+                    email: str = "",
+                    remarks: str = "") -> dict:
+    """
+    Create a new sales quote.
+
+    line_items is a list of dicts, each with:
+      item_number (str), quantity (float), price (float), description (str, optional)
+
+    Args:
+        customer_number: Customer code
+        description: Quote description
+        line_items: List of line item dicts (see above)
+        po_number: Customer PO number (optional)
+        due_date: ISO date the quote expires (optional, default: today)
+        sales_rep_code: Sales rep code (optional)
+        email: Contact email for the quote (optional)
+        remarks: Remarks (optional)
+    """
+    _validate_required(customer_number, "customer_number")
+    if not line_items:
+        raise ValueError("'line_items' must contain at least one item.")
+
+    now = datetime.now().isoformat()
+    due = due_date or datetime.now().date().isoformat()
+
+    details = []
+    for li in line_items:
+        _validate_required(li.get("item_number"), "line_items[].item_number")
+        details.append({
+            "Item":              _code(code_val=li["item_number"]),
+            "Quantity":          {"Value": li.get("quantity", 1), "Valid": True},
+            "Price":             {"Value": li.get("price", 0), "Valid": True},
+            "Description":       _str_ex(li.get("description", "")),
+            "ShipToTypeID":      _int_ex(0),
+            "optEquipmentNumber": _code(),
+            "optContractNumber":  _code(),
+        })
+
+    result = _client().service.addSalesQuote(
+        Auth=_auth(),
+        SalesQuote={
+            "QuoteID":        _code(),
+            "QuoteNumber":    _str_ex(""),
+            "CustomerNumber": _code(code_val=customer_number),
+            "optBillToNumber": _code(),
+            "optMailToNumber": _code(),
+            "optShipToNumber": _code(),
+            "Date":           _date_ex(now),
+            "RequiredDate":   _date_ex(now),
+            "DueDate":        _date_ex(due),
+            "Description":    _str_ex(description),
+            "PONumber":       _str_ex(po_number),
+            "ShipToATTN":     _str_ex(""),
+            "Email":          _str_ex(email),
+            "SalesRep":       _code(code_val=sales_rep_code),
+            "CreateDate":     _date_ex(now),
+            "LastUpdate":     _date_ex(now),
+            "Remarks":        _str_ex(remarks),
+            "Details":        {"SalesQuoteDetail": details} if details else None,
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
 def add_sales_order(customer_number: str,
                     description: str,
                     line_items: list,

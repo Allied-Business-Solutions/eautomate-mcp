@@ -54,6 +54,48 @@ def get_technician_availability(technician_code: str,
 
 
 @mcp.tool()
+def get_technician_bin(technician_code: str) -> dict:
+    """
+    Get the default inventory bin for a technician.
+
+    Args:
+        technician_code: Technician code
+    """
+    return _serialize(_client().service.getTechnicianBin(
+        Auth=_auth(),
+        Technician=_code(code_val=technician_code),
+    ))
+
+
+@mcp.tool()
+def get_technician_branch(technician_code: str) -> dict:
+    """
+    Get the branch assigned to a technician.
+
+    Args:
+        technician_code: Technician code
+    """
+    return _serialize(_client().service.getTechnicianBranch(
+        Auth=_auth(),
+        Technician=_code(code_val=technician_code),
+    ))
+
+
+@mcp.tool()
+def get_technician_branch_warehouse(technician_code: str) -> dict:
+    """
+    Get the branch warehouse for a technician (used for inventory transfers).
+
+    Args:
+        technician_code: Technician code
+    """
+    return _serialize(_client().service.getTechnicianBranchWarehouse(
+        Auth=_auth(),
+        Technician=_code(code_val=technician_code),
+    ))
+
+
+@mcp.tool()
 def set_tech_gps(technician_code: str,
                  latitude: float,
                  longitude: float,

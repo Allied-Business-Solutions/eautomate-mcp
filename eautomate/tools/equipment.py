@@ -72,6 +72,46 @@ def find_equipment_by_serial(serial_number: str,
 
 
 @mcp.tool()
+def find_equipment_by_serials_bulk(serial_numbers: list) -> list:
+    """
+    Look up multiple equipment records by serial number in a single call.
+    Returns a flat list of all matching equipment records.
+
+    serial_numbers is a list of strings, optionally with make/model hints:
+      "SERIAL123"  — plain string
+      {"serial": "SERIAL123", "make": "RICOH", "model": "MP3054"}  — dict with hints
+
+    Args:
+        serial_numbers: List of serial number strings or dicts with serial/make/model keys
+    """
+    if not serial_numbers:
+        raise ValueError("'serial_numbers' must contain at least one entry.")
+
+    details = []
+    for entry in serial_numbers:
+        if isinstance(entry, str):
+            details.append({
+                "SerialNumber": _str_ex(entry),
+                "optMake":      _str_ex(""),
+                "optModel":     _str_ex(""),
+            })
+        else:
+            details.append({
+                "SerialNumber": _str_ex(entry.get("serial", "")),
+                "optMake":      _str_ex(entry.get("make", "")),
+                "optModel":     _str_ex(entry.get("model", "")),
+            })
+
+    return _serialize(_client().service.getEquipmentsFromSerialNumbers(
+        Auth=_auth(),
+        SerialNumbers={
+            "TimeStamp": "",
+            "Details": {"SerialNumberListDetail": details},
+        },
+    ))
+
+
+@mcp.tool()
 def add_equipment(equipment_number: str,
                   customer_number: str,
                   serial_number: str,
