@@ -96,6 +96,59 @@ def get_technician_branch_warehouse(technician_code: str) -> dict:
 
 
 @mcp.tool()
+def add_tech_to_tech_transfer(item_number: str,
+                               quantity: float,
+                               from_technician_code: str,
+                               to_technician_code: str) -> dict:
+    """
+    Transfer inventory from one technician's stock to another.
+
+    Args:
+        item_number: Item number to transfer
+        quantity: Quantity to transfer
+        from_technician_code: Source technician code
+        to_technician_code: Destination technician code
+    """
+    _validate_required(item_number, "item_number")
+    _validate_positive(quantity, "quantity")
+    _validate_required(from_technician_code, "from_technician_code")
+    _validate_required(to_technician_code, "to_technician_code")
+    result = _client().service.addTechToTechItemTransfer(
+        Auth=_auth(),
+        Item=_code(code_val=item_number),
+        Quantity=_double_ex(quantity),
+        FromTechnicianNumber=_code(code_val=from_technician_code),
+        ToTechnicianNumber=_code(code_val=to_technician_code),
+    )
+    return _serialize(result) or {"success": True}
+
+
+@mcp.tool()
+def add_warehouse_to_tech_transfer(item_number: str,
+                                    quantity: float,
+                                    to_technician_code: str) -> dict:
+    """
+    Transfer inventory from the warehouse to a technician's stock.
+    The source warehouse is the technician's default branch warehouse.
+
+    Args:
+        item_number: Item number to transfer
+        quantity: Quantity to transfer
+        to_technician_code: Destination technician code
+    """
+    _validate_required(item_number, "item_number")
+    _validate_positive(quantity, "quantity")
+    _validate_required(to_technician_code, "to_technician_code")
+    result = _client().service.addWhsToTechItemTransfer(
+        Auth=_auth(),
+        Item=_code(code_val=item_number),
+        Quantity=_double_ex(quantity),
+        ToTechnicianNumber=_code(code_val=to_technician_code),
+    )
+    return _serialize(result) or {"success": True}
+
+
+@mcp.tool()
 def set_tech_gps(technician_code: str,
                  latitude: float,
                  longitude: float,

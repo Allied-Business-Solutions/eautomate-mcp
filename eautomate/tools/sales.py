@@ -148,6 +148,94 @@ def add_sales_quote(customer_number: str,
 
 
 @mcp.tool()
+def save_sales_order(so_number: str,
+                     description: Optional[str] = None,
+                     po_number: Optional[str] = None,
+                     remarks: Optional[str] = None,
+                     sales_rep_code: Optional[str] = None,
+                     status_code: Optional[str] = None,
+                     on_hold_code: Optional[str] = None) -> dict:
+    """
+    Update an existing sales order. Fetches current values and overlays
+    only the fields you supply.
+
+    Args:
+        so_number: Sales order number (required)
+        description: New description (optional)
+        po_number: Customer PO number (optional)
+        remarks: Remarks (optional)
+        sales_rep_code: Sales rep code (optional)
+        status_code: New status code (optional)
+        on_hold_code: On-hold code to set (optional)
+    """
+    _validate_required(so_number, "so_number")
+    cur = _client().service.getSalesOrder(Auth=_auth(), SalesOrderNumber=_code(code_val=so_number))
+    if cur is None:
+        raise ValueError(f"Sales order '{so_number}' not found")
+
+    def _pick_str(new_val, cur_field):
+        if new_val is not None:
+            return _str_ex(new_val)
+        return cur_field or _str_ex("")
+
+    def _pick_code(new_val, cur_field):
+        return _code(code_val=new_val) if new_val is not None else (cur_field or _code())
+
+    result = _client().service.saveSalesOrder(
+        Auth=_auth(),
+        SalesOrder={
+            "SOID":             cur.SOID             or _code(),
+            "SONumber":         _str_ex(so_number),
+            "CustomerNumber":   cur.CustomerNumber   or _code(),
+            "optBillToNumber":  cur.optBillToNumber  or _code(),
+            "optShipToNumber":  cur.optShipToNumber  or _code(),
+            "Description":      _pick_str(description, cur.Description),
+            "PONumber":         _pick_str(po_number,   cur.PONumber),
+            "Remarks":          _pick_str(remarks,     cur.Remarks),
+            "Message":          cur.Message          or _str_ex(""),
+            "Status":           _pick_code(status_code,    cur.Status),
+            "Date":             cur.Date             or _date_ex(),
+            "ReqDate":          cur.ReqDate          or _date_ex(),
+            "CreateDate":       cur.CreateDate       or _date_ex(),
+            "LastUpdate":       cur.LastUpdate       or _date_ex(),
+            "SalesRep":         _pick_code(sales_rep_code, cur.SalesRep),
+            "DiscountRate":     cur.DiscountRate     or _double_ex(0),
+            "Discount":         cur.Discount         or _double_ex(0),
+            "TaxCode":          cur.TaxCode          or _code(),
+            "Tax":              cur.Tax              or _double_ex(0),
+            "Total":            cur.Total            or _double_ex(0),
+            "OnHoldCode":       _pick_code(on_hold_code, cur.OnHoldCode),
+            "OrderType":        cur.OrderType        or _code(),
+            "ChargeAccountID":  cur.ChargeAccountID  or _code(),
+            "ChargeMethod":     cur.ChargeMethod     or _code(),
+            "Term":             cur.Term             or _code(),
+            "Freight":          cur.Freight          or _double_ex(0),
+            "BilledFreight":    cur.BilledFreight    or _double_ex(0),
+            "ShipToATTN":       cur.ShipToATTN       or _str_ex(""),
+            "ShipToStreet":     cur.ShipToStreet     or _str_ex(""),
+            "ShipToCity":       cur.ShipToCity       or _str_ex(""),
+            "ShipToState":      cur.ShipToState      or _str_ex(""),
+            "ShipToZip":        cur.ShipToZip        or _str_ex(""),
+            "ShipToCountry":    cur.ShipToCountry    or _str_ex(""),
+            "ShipMethod":       cur.ShipMethod       or _code(),
+            "ShipToName":       cur.ShipToName       or _str_ex(""),
+            "MailToATTN":       cur.MailToATTN       or _str_ex(""),
+            "MailToName":       cur.MailToName       or _str_ex(""),
+            "MailToStreet":     cur.MailToStreet     or _str_ex(""),
+            "MailToCity":       cur.MailToCity       or _str_ex(""),
+            "MailToState":      cur.MailToState      or _str_ex(""),
+            "MailToZip":        cur.MailToZip        or _str_ex(""),
+            "MailToCountry":    cur.MailToCountry    or _str_ex(""),
+            "Warehouse":        cur.Warehouse        or _code(),
+            "Dropship":         cur.Dropship         or _bool_ex(False),
+            "Branch":           cur.Branch           or _code(),
+            "Details":          None,
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
 def add_sales_order(customer_number: str,
                     description: str,
                     line_items: list,

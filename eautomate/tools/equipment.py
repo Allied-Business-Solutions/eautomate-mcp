@@ -360,6 +360,114 @@ def add_model(model_name: str,
 
 
 @mcp.tool()
+def add_model_full(model_code: str,
+                   description: str,
+                   make_code: str,
+                   model_category_code: str = "",
+                   metered: bool = True,
+                   host: bool = False,
+                   accessory: bool = False,
+                   require_meter_on_service_calls: bool = False) -> dict:
+    """
+    Add a new equipment model with full field control (AddModel2).
+    Use this instead of add_model when you need to set metered, host,
+    accessory, or require_meter_on_service_calls flags.
+
+    Args:
+        model_code: Model code/name
+        description: Full description
+        make_code: Make code this model belongs to
+        model_category_code: Model category code (optional)
+        metered: Whether the model tracks meters (default True)
+        host: Whether this is a host/parent model (default False)
+        accessory: Whether this is an accessory model (default False)
+        require_meter_on_service_calls: Require meter reading on calls (default False)
+    """
+    _validate_required(model_code, "model_code")
+    _validate_required(description, "description")
+    _validate_required(make_code, "make_code")
+    return _serialize(_client().service.AddModel2(
+        Auth=_auth(),
+        Model={
+            "Model":           _code(code_val=model_code),
+            "Description":     _str_ex(description),
+            "Make":            _code(code_val=make_code),
+            "Category":        _code(code_val=model_category_code),
+            "Active":          _bool_ex(True),
+            "Host":            _bool_ex(host),
+            "Accessory":       _bool_ex(accessory),
+            "Metered":         _bool_ex(metered),
+            "MeterInstructions": _str_ex(""),
+            "IntroductionDate": _date_ex(),
+            "MfgDiscontinuedDate": _date_ex(),
+            "ServiceDiscontinuedDate": _date_ex(),
+            "RequireMeteronServiceCalls": _bool_ex(require_meter_on_service_calls),
+        }
+    ))
+
+
+@mcp.tool()
+def save_model(model_code: str,
+               description: Optional[str] = None,
+               make_code: Optional[str] = None,
+               model_category_code: Optional[str] = None,
+               active: Optional[bool] = None,
+               metered: Optional[bool] = None,
+               host: Optional[bool] = None,
+               accessory: Optional[bool] = None,
+               require_meter_on_service_calls: Optional[bool] = None) -> dict:
+    """
+    Update an existing equipment model. Fetches current values and overlays
+    only the fields you supply.
+
+    Args:
+        model_code: Model code to update (required)
+        description: New description (optional)
+        make_code: New make code (optional)
+        model_category_code: New category code (optional)
+        active: Active flag (optional)
+        metered: Metered flag (optional)
+        host: Host flag (optional)
+        accessory: Accessory flag (optional)
+        require_meter_on_service_calls: Require meter on calls (optional)
+    """
+    _validate_required(model_code, "model_code")
+    cur = _serialize(_client().service.getModel(
+        Auth=_auth(), Model=_code(code_val=model_code)
+    ))
+    if not cur:
+        raise ValueError(f"Model '{model_code}' not found")
+
+    def _pick(new_val, cur_key, default=None):
+        return new_val if new_val is not None else (cur.get(cur_key, {}).get("Value") if isinstance(cur.get(cur_key), dict) else cur.get(cur_key, default))
+
+    def _pick_code(new_val, cur_key):
+        if new_val is not None:
+            return _code(code_val=new_val)
+        v = cur.get(cur_key)
+        return _code(code_val=v.get("Code") if isinstance(v, dict) else v) if v else _code()
+
+    return _serialize(_client().service.saveModel(
+        Auth=_auth(),
+        Model={
+            "Model":           _code(code_val=model_code),
+            "Description":     _str_ex(_pick(description, "Description", "")),
+            "Make":            _pick_code(make_code, "Make"),
+            "Category":        _pick_code(model_category_code, "Category"),
+            "Active":          _bool_ex(_pick(active, "Active", True)),
+            "Host":            _bool_ex(_pick(host, "Host", False)),
+            "Accessory":       _bool_ex(_pick(accessory, "Accessory", False)),
+            "Metered":         _bool_ex(_pick(metered, "Metered", True)),
+            "MeterInstructions": _str_ex(cur.get("MeterInstructions", {}).get("Value", "") if isinstance(cur.get("MeterInstructions"), dict) else ""),
+            "IntroductionDate": _date_ex(),
+            "MfgDiscontinuedDate": _date_ex(),
+            "ServiceDiscontinuedDate": _date_ex(),
+            "RequireMeteronServiceCalls": _bool_ex(_pick(require_meter_on_service_calls, "RequireMeteronServiceCalls", False)),
+        }
+    ))
+
+
+@mcp.tool()
 def get_related_items_for_equipment(equipment_number: str) -> list:
     """
     Related supply/part items for a piece of equipment (e-info enabled items only).

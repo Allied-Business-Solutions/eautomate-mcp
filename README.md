@@ -12,6 +12,7 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 - Open, dispatch, reassign, complete, cancel, and hold service calls
 - Check open calls by customer, technician, or equipment
 - Look up technician availability and call queues
+- Transfer inventory between technicians or from warehouse to tech
 
 **Meters**
 - Submit meter readings for any equipment
@@ -24,17 +25,29 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 - Identify what meters are needed before a billing run
 
 **Purchasing**
-- Create and receive purchase orders
-- Check PO status and vendor pricing
-- Look up item inventory levels
+- Create, update, and receive purchase orders (full or line-by-line)
+- Post PO-linked AP vouchers; receive and voucher in a single call
+- Check PO status and vendor pricing; update line-item prices
+- Look up item inventory levels; get next PO number
 
 **Customers & Equipment**
-- Search customers by name, look up equipment by serial number
-- Add new customers and equipment records
+- Search customers by name, look up equipment by serial number (single or bulk)
+- Create and update customers, contacts, equipment, makes, and models
+- Manage charge accounts
+
+**Sales**
+- Create and update sales orders and sales quotes
+
+**Vendors**
+- Create and update vendor records
 
 **Finance (AR/AP/GL)**
-- Post AR receipts and AP vouchers
-- Look up GL accounts
+- Post AR receipts and AP vouchers (standalone or PO-linked)
+- Look up GL accounts, view voucher lists and payment applications
+
+**Reference Data & Users**
+- Look up all reference code lists (call types, territories, etc.)
+- List and fetch e-automate users and sales reps
 
 ---
 
@@ -141,6 +154,12 @@ Show me the status of PO [number].
 ```
 Create a PO for vendor [number] — 10 units of [item] at $45 each.
 ```
+```
+Receive PO [number] line by line — 5 units of detail ID 12, 3 units of detail ID 13.
+```
+```
+Transfer 2 units of item [number] from tech [code] to tech [code].
+```
 
 ### General
 
@@ -192,17 +211,17 @@ server.py                   # Entry point (18 lines) — imports modules, runs M
 eautomate/
   core.py                   # Client, auth, error handling, logging, validators
   tools/
-    codes.py                # ping, authorize, get_code_list
-    customers.py            # customer CRUD, contacts
-    equipment.py            # equipment CRUD, makes, models
+    codes.py                # ping, authorize, get_code_list, users, sales reps
+    customers.py            # customer/contact CRUD, charge accounts
+    equipment.py            # equipment CRUD, makes, models (add + save)
     meters.py               # meter readings, due lists
     service_calls.py        # open/dispatch/cancel/hold, filtered lists
-    inventory.py            # items, inventory, vendor pricing
-    purchase_orders.py      # PO create, receive, status
-    sales.py                # sales orders and invoices
-    vendors.py              # vendor lookup and pricing
+    inventory.py            # items (add + save), inventory, vendor pricing
+    purchase_orders.py      # PO create/save/receive/voucher, AP queries
+    sales.py                # sales orders + quotes (add + save)
+    vendors.py              # vendor create/update, pricing
     contracts.py            # contract lookup
-    technicians.py          # technician records, availability, GPS
+    technicians.py          # technician records, availability, GPS, transfers
     finance.py              # GL journals, AP vouchers, AR receipts
 requirements.txt
 .env                        # Your credentials — never committed

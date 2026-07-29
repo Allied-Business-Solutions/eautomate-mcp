@@ -143,6 +143,117 @@ def add_purchase_order(po_number: str,
 
 
 @mcp.tool()
+def get_next_po_number() -> dict:
+    """Get the next auto-generated purchase order number from e-automate."""
+    result = _client().service.getNextPONumber(Auth=_auth())
+    return _serialize(result) if result else {"PONumber": result}
+
+
+@mcp.tool()
+def save_purchase_order(po_number: str,
+                        description: Optional[str] = None,
+                        notes: Optional[str] = None,
+                        remarks: Optional[str] = None,
+                        ship_method_code: Optional[str] = None) -> dict:
+    """
+    Update an existing purchase order. Fetches current values and overlays
+    only the fields you supply. Does not modify line items.
+
+    Args:
+        po_number: PO number to update (required)
+        description: New description (optional)
+        notes: New notes (optional)
+        remarks: New remarks (optional)
+        ship_method_code: Ship method code (optional)
+    """
+    _validate_required(po_number, "po_number")
+    cur = _client().service.getPurchaseOrder(
+        Auth=_auth(), PurchaseOrderNumber=_code(code_val=po_number)
+    )
+    if cur is None:
+        raise ValueError(f"Purchase order '{po_number}' not found")
+
+    def _pick_str(new_val, cur_field):
+        return _str_ex(new_val) if new_val is not None else (cur_field or _str_ex(""))
+
+    def _pick_code(new_val, cur_field):
+        return _code(code_val=new_val) if new_val is not None else (cur_field or _code())
+
+    result = _client().service.savePurchaseOrder(
+        Auth=_auth(),
+        PurchaseOrder={
+            "PONumber":           cur.PONumber          or _code(code_val=po_number),
+            "Customer":           cur.Customer          or _code(),
+            "Vendor":             cur.Vendor            or _code(),
+            "Warehouse":          cur.Warehouse         or _code(),
+            "Description":        _pick_str(description, cur.Description),
+            "Notes":              _pick_str(notes,       cur.Notes),
+            "optDate":            cur.optDate           or _date_ex(),
+            "optRequestDate":     cur.optRequestDate    or _date_ex(),
+            "DropShipToCustomer": cur.DropShipToCustomer or _bool_ex(False),
+            "ShipToWarehouse":    cur.ShipToWarehouse   or _code(),
+            "optShipToCustomer":  cur.optShipToCustomer or _code(),
+            "optShipToName":      cur.optShipToName     or _str_ex(""),
+            "optShipToATTN":      cur.optShipToATTN     or _str_ex(""),
+            "optShipToStreet":    cur.optShipToStreet   or _str_ex(""),
+            "optShipToCity":      cur.optShipToCity     or _str_ex(""),
+            "optShipToState":     cur.optShipToState    or _str_ex(""),
+            "optShipToZip":       cur.optShipToZip      or _str_ex(""),
+            "optShipToCountry":   cur.optShipToCountry  or _str_ex(""),
+            "optShipToTypeID":    cur.optShipToTypeID   or _int_ex(0),
+            "Locked":             cur.Locked            or _bool_ex(False),
+            "Remarks":            _pick_str(remarks,    cur.Remarks),
+            "Status":             cur.Status            or _code(),
+            "optPurchasersUserID": cur.optPurchasersUserID or _str_ex(""),
+            "optShipMethod":      _pick_code(ship_method_code, cur.optShipMethod),
+            "Details":            None,
+            "optPOMajor":         cur.optPOMajor        or _code(),
+            "Message":            cur.Message           or _str_ex(""),
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
+def set_po_remarks(po_number: str, remarks: str) -> dict:
+    """
+    Set the remarks field on a purchase order.
+
+    Args:
+        po_number: PO number code
+        remarks: Remarks text to set
+    """
+    _validate_required(po_number, "po_number")
+    result = _client().service.setPurchaseOrderRemarks(
+        auth=_auth(),
+        PONumber=_code(code_val=po_number),
+        Remarks=_str_ex(remarks),
+    )
+    return _serialize(result) or {"success": True}
+
+
+@mcp.tool()
+def set_po_detail_price(po_number: str, detail_id: int, price: float) -> dict:
+    """
+    Update the unit price on a specific PO line item.
+
+    Args:
+        po_number: PO number code
+        detail_id: PO detail line ID (from get_purchase_order Details)
+        price: New unit price
+    """
+    _validate_required(po_number, "po_number")
+    _validate_positive(price, "price")
+    result = _client().service.setPODetailPrice(
+        auth=_auth(),
+        PONumber=_code(code_val=po_number),
+        DetailID=_int_ex(detail_id),
+        Price=_double_ex(price),
+    )
+    return _serialize(result) or {"success": True}
+
+
+@mcp.tool()
 def update_po_to_placed(po_number: str, confirmation_number: str = "") -> dict:
     """
     Mark a purchase order as placed (sent to vendor).

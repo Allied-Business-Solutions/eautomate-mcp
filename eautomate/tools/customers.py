@@ -379,6 +379,98 @@ def save_contact(contact_number: str,
 
 
 @mcp.tool()
+def get_contact_list(since_timestamp: Optional[str] = None) -> list:
+    """
+    List all contacts across all customers.
+
+    Args:
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getContactList(Auth=_auth(), **_ts(since_timestamp)))
+
+
+@mcp.tool()
+def get_charge_account(charge_account_code: str) -> dict:
+    """
+    Full record for a single charge account.
+
+    Args:
+        charge_account_code: Charge account code
+    """
+    return _serialize(_client().service.getChargeAccount(
+        Auth=_auth(),
+        ChargeAccount=_code(code_val=charge_account_code),
+    ))
+
+
+@mcp.tool()
+def get_charge_accounts_for_customer(customer_number: str,
+                                      since_timestamp: Optional[str] = None) -> list:
+    """
+    List charge accounts for a customer.
+
+    Args:
+        customer_number: Customer code
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getChargeAccountListForCustomer(
+        Auth=_auth(),
+        CustomerNumber=_code(code_val=customer_number),
+        **_ts(since_timestamp),
+    ))
+
+
+@mcp.tool()
+def add_charge_account(customer_number: str,
+                       name: str,
+                       charge_account_type_code: str,
+                       address: str = "",
+                       city: str = "",
+                       state: str = "",
+                       zip_code: str = "",
+                       remarks: str = "") -> dict:
+    """
+    Add a charge account to a customer (e.g. a PO number or credit account
+    used to charge back costs on service calls or sales orders).
+
+    Args:
+        customer_number: Customer code to attach the account to
+        name: Charge account name/label
+        charge_account_type_code: Charge account type code
+        address: Street address (optional)
+        city: City (optional)
+        state: State (optional)
+        zip_code: ZIP code (optional)
+        remarks: Remarks (optional)
+    """
+    _validate_required(customer_number, "customer_number")
+    _validate_required(name, "name")
+    _validate_required(charge_account_type_code, "charge_account_type_code")
+    result = _client().service.addChargeAccount(
+        Auth=_auth(),
+        CAData={
+            "ChargeAccount":     _code(),
+            "ChargeAccountType": _code(code_val=charge_account_type_code),
+            "CustomerNumber":    _code(code_val=customer_number),
+            "Name":              _str_ex(name),
+            "Address":           _str_ex(address),
+            "City":              _str_ex(city),
+            "State":             _str_ex(state),
+            "Zip":               _str_ex(zip_code),
+            "MaskedCardNumber":  _str_ex(""),
+            "ChargeAccountInfo": _str_ex(""),
+            "VaultToken":        _str_ex(""),
+            "VaultID":           _int_ex(0),
+            "ExpDate":           _date_ex(),
+            "SecurityCode":      _str_ex(""),
+            "Remarks":           _str_ex(remarks),
+            "Active":            _bool_ex(True),
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
 def get_contacts_for_customer(customer_number: str) -> list:
     """
     List all contacts for a customer.
