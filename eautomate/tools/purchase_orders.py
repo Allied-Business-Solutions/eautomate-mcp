@@ -35,6 +35,219 @@ def get_purchase_order(po_number: str) -> dict:
 
 
 @mcp.tool()
+def get_po_item(po_number: str, item_number: str) -> dict:
+    """
+    Fetch a single line item from a purchase order by item number.
+    Useful for getting the DetailID needed by set_po_detail_price.
+
+    Args:
+        po_number: Purchase order number
+        item_number: Item number code
+    """
+    _validate_required(po_number, "po_number")
+    _validate_required(item_number, "item_number")
+    return _serialize(_client().service.getPOItem(
+        Auth=_auth(),
+        PONumber=_code(code_val=po_number),
+        Item=_code(code_val=item_number),
+    ))
+
+
+@mcp.tool()
+def get_po_core_order(po_number: str) -> dict:
+    """
+    Fetch core/header-only purchase order data (no line items).
+    Faster than get_purchase_order when you only need header fields.
+
+    Args:
+        po_number: Purchase order number
+    """
+    _validate_required(po_number, "po_number")
+    return _serialize(_client().service.getPOCoreOrder(
+        auth=_auth(),
+        poNumber=po_number,
+    ))
+
+
+@mcp.tool()
+def get_latest_po_revision(po_major_number: str) -> dict:
+    """
+    Get the latest revision of a purchase order by its major PO number.
+    Use when a PO has been revised and you want the current active version.
+
+    Args:
+        po_major_number: The major PO number (base PO without revision suffix)
+    """
+    _validate_required(po_major_number, "po_major_number")
+    return _serialize(_client().service.getLatestPurchaseOrderRevisionByPOMajor(
+        Auth=_auth(),
+        PurchaseOrderNumber=_code(code_val=po_major_number),
+    ))
+
+
+@mcp.tool()
+def get_po_ship_via_code(po_number: str) -> dict:
+    """
+    Get the ship-via code set on a purchase order.
+
+    Args:
+        po_number: Purchase order number
+    """
+    _validate_required(po_number, "po_number")
+    return _serialize(_client().service.getPurchaseOrderShipViaCode(
+        Auth=_auth(),
+        PurchaseOrderNumber=_code(code_val=po_number),
+    ))
+
+
+@mcp.tool()
+def get_po_bill_to_by_custom_property(property_name: str, property_value: str) -> dict:
+    """
+    Look up a purchase order's bill-to address by a custom property value.
+
+    Args:
+        property_name: Custom property name to filter on
+        property_value: Value to match
+    """
+    _validate_required(property_name, "property_name")
+    _validate_required(property_value, "property_value")
+    return _serialize(_client().service.getPurchaseOrderBillToByCustomProperty(
+        Auth=_auth(),
+        customProperty={
+            "ID":    0,
+            "Name":  property_name,
+            "Value": property_value,
+            "IDVal": 0,
+        },
+    ))
+
+
+@mcp.tool()
+def get_purchase_orders_awaiting_shipment() -> list:
+    """
+    List all purchase orders that have been placed but not yet received.
+    """
+    return _serialize(_client().service.getPurchaseOrdersAwaitingShipment(auth=_auth()))
+
+
+@mcp.tool()
+def get_purchase_orders_receivable_by_vendor(vendor_number: str,
+                                              include_all: bool = False) -> list:
+    """
+    List open purchase orders that can be received for a specific vendor.
+
+    Args:
+        vendor_number: Vendor number code
+        include_all: Include fully received POs as well (default False)
+    """
+    _validate_required(vendor_number, "vendor_number")
+    return _serialize(_client().service.getPurchaseOrdersReceivableByVendor(
+        Auth=_auth(),
+        vendor=vendor_number,
+        all=include_all,
+    ))
+
+
+@mcp.tool()
+def get_purchase_order_list_by_sent_id(sent_id: int,
+                                        since_timestamp: Optional[str] = None) -> list:
+    """
+    List purchase orders filtered by their EDI/sent ID.
+
+    Args:
+        sent_id: The integer sent/EDI ID to filter by
+        since_timestamp: Optional e-automate timestamp string
+    """
+    return _serialize(_client().service.getPurchaseOrderListBySentId(
+        Auth=_auth(),
+        **_ts(since_timestamp),
+        SentId=sent_id,
+    ))
+
+
+@mcp.tool()
+def get_purchase_order_list_for_sales_order(so_number: str) -> list:
+    """
+    List all purchase orders linked to a specific sales order.
+
+    Args:
+        so_number: Sales order number
+    """
+    _validate_required(so_number, "so_number")
+    return _serialize(_client().service.getPurchaseOrderListForSalesOrder(
+        Auth=_auth(),
+        SONumber=_code(code_val=so_number),
+    ))
+
+
+@mcp.tool()
+def add_resupply_notification_order(vendor_number: str,
+                                     line_items: list,
+                                     ship_to_name: str = "",
+                                     ship_to_attn: str = "",
+                                     ship_to_address: str = "",
+                                     ship_to_city: str = "",
+                                     ship_to_state: str = "",
+                                     ship_to_zip: str = "",
+                                     remarks: str = "",
+                                     ship_from_dealer_stock: bool = False) -> dict:
+    """
+    Create a resupply notification order (used to trigger automatic restocking).
+
+    line_items is a list of dicts, each with:
+      equipment_number (str), item_number (str), quantity (float),
+      and optionally unit_price (float), description (str), uom_code (str)
+
+    Args:
+        vendor_number: Vendor to resupply from
+        line_items: List of resupply item dicts (see above)
+        ship_to_name: Destination name (optional)
+        ship_to_attn: Attention line (optional)
+        ship_to_address: Street address (optional)
+        ship_to_city: City (optional)
+        ship_to_state: State (optional)
+        ship_to_zip: ZIP code (optional)
+        remarks: Remarks (optional)
+        ship_from_dealer_stock: Ship from dealer stock instead of vendor (default False)
+    """
+    _validate_required(vendor_number, "vendor_number")
+    if not line_items:
+        raise ValueError("'line_items' must contain at least one item.")
+
+    details = []
+    for li in line_items:
+        _validate_required(li.get("item_number"), "line_items[].item_number")
+        _validate_required(li.get("equipment_number"), "line_items[].equipment_number")
+        details.append({
+            "Equipment":   _code(code_val=li["equipment_number"]),
+            "Item":        _code(code_val=li["item_number"]),
+            "UOM":         _code(code_val=li.get("uom_code", "")),
+            "Quantity":    {"Value": li.get("quantity", 1), "Valid": True},
+            "UnitPrice":   {"Value": li.get("unit_price", 0), "Valid": bool(li.get("unit_price"))},
+            "Description": _str_ex(li.get("description", "")),
+        })
+
+    result = _client().service.addResupplyNotificationOrders(
+        Auth=_auth(),
+        Notification={
+            "NotificationID":      _int_ex(0),
+            "ShipToName":          _str_ex(ship_to_name),
+            "ShipToATTN":          _str_ex(ship_to_attn),
+            "ShipToAddress1":      _str_ex(ship_to_address),
+            "ShipToAddress2":      _str_ex(""),
+            "ShipToCity":          _str_ex(ship_to_city),
+            "ShipToState":         _str_ex(ship_to_state),
+            "ShipToZipCode":       _str_ex(ship_to_zip),
+            "Remarks":             _str_ex(remarks),
+            "Vendor":              _str_ex(vendor_number),
+            "ShipFromDealerStock": _bool_ex(ship_from_dealer_stock),
+            "Details":             {"ResupplyNotificationDetail": details},
+        }
+    )
+    return _serialize(result)
+
+
+@mcp.tool()
 def get_purchase_orders_by_vendor(vendor_number: str) -> list:
     """
     All open purchase orders for a vendor.
