@@ -79,6 +79,17 @@ def _load_pricing() -> dict:
     return pricing
 
 
+_CONTACT_KEYWORDS = ("notify customer", "contact name", "contact phone")
+
+def _extract_contact_lines(remarks: str) -> str:
+    """Return only the notify/contact-name/contact-phone lines from SO remarks."""
+    kept = [
+        line for line in remarks.splitlines()
+        if any(kw in line.lower() for kw in _CONTACT_KEYWORDS)
+    ]
+    return "\n".join(kept)
+
+
 def _best_sme(oem: str, pricing: dict) -> Optional[tuple[str, str]]:
     """Return (sme_number, ref_number) for the cheapest eligible program, or None."""
     options = pricing.get(oem)
@@ -174,20 +185,14 @@ if _PRICING_CSV.exists():
                 if isinstance(oem_field, dict)
                 else oem_field
             )
+            # Fall back to the item code itself — Xerox part numbers frequently
+            # match OEM numbers directly (e.g. 006R04400).
             if not oem:
-                raise ValueError(
-                    f"Item '{item_code}' has no OEM number in e-automate — "
-                    "cannot look up SME pricing. Add the OEM number to the item "
-                    "record and try again."
-                )
+                oem = item_code
 
             result = _best_sme(oem, pricing)
             if result is None:
-                raise ValueError(
-                    f"OEM '{oem}' (item '{item_code}') was not found in the "
-                    "Xerox SME pricing matrix. Update the CSV or check the item's "
-                    "OEM number and try again."
-                )
+                continue  # no match for this item — skip, don't abort
 
             sme, ref = result
             pair = f"{sme} Ref#{ref}"
@@ -197,7 +202,8 @@ if _PRICING_CSV.exists():
 
         if not sme_ref_pairs:
             raise ValueError(
-                f"No items with resolvable OEM numbers were found on PO '{po_number}'."
+                f"No items on PO '{po_number}' matched the Xerox SME pricing matrix. "
+                "Check that item codes or OEM numbers correspond to entries in the CSV."
             )
 
         # Build remarks — line 1: SME/Ref pairs; line 2: SO contact info if available
@@ -215,7 +221,9 @@ if _PRICING_CSV.exists():
                 else so_remarks_field
             )
             if so_remarks and so_remarks.strip():
-                remarks_lines.append(so_remarks.strip())
+                contact = _extract_contact_lines(so_remarks)
+                if contact:
+                    remarks_lines.append(contact)
 
         final_remarks = "\n".join(remarks_lines)
 
