@@ -12,6 +12,7 @@ import eautomate.tools.vendors      # noqa: F401
 import eautomate.tools.contracts    # noqa: F401
 import eautomate.tools.technicians  # noqa: F401
 import eautomate.tools.finance      # noqa: F401
+import eautomate.tools.sme          # noqa: F401
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
