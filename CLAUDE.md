@@ -154,7 +154,7 @@ Two additional skills come from Anthropic's remote channel (`anthropic-skills:ea
 
 ## WSDL Reference
 
-`wsdl service description.txt` in the project root contains the full SOAP service definition. Search it to find method names and field types before adding new tools.
+`e-automate-api.xml` in the project root contains the full SOAP service definition. This file is excluded from git — download it separately if needed. Search it to find method names and field types before adding new tools.
 
 Key patterns:
 - Method names use camelCase: `getCall`, `addCall`, `setCallDispatched`

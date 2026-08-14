@@ -1,5 +1,6 @@
-# WSDL — local reference only
+# WSDL / API reference — local only, not distributed
 wsdl service description.txt
+e-automate-api.xml
 
 # Xerox SME pricing matrix — not distributed; drop your own copy in data/
 data/xerox_sme_pricing.csv
