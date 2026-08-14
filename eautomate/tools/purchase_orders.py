@@ -1,6 +1,6 @@
 """eAutomate MCP — purchase order tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive, EA_DB_CONN
 from typing import Optional
 from datetime import datetime
 
@@ -291,6 +291,66 @@ def get_purchase_orders_by_vendor(vendor_number: Optional[str] = None,
                 filtered.append(po)
         results = filtered
     return results
+
+
+@mcp.tool()
+def get_unsent_purchase_orders(purchaser_user_id: Optional[str] = None,
+                                vendor_number: Optional[str] = None) -> list:
+    """
+    List open purchase orders that have NOT yet been sent to the vendor
+    (Sent = No in eAutomate). Queries the database directly because the
+    SOAP API does not expose the Sent flag.
+
+    Returns PO number, vendor, description, date, total, purchaser, and
+    send method for each unsent open PO.
+
+    Args:
+        purchaser_user_id: Filter to a specific purchaser's eAutomate user ID
+                           (e.g. "TLIEBENTHAL"), case-insensitive. Omit for all.
+        vendor_number: Filter to a specific vendor number. Omit for all vendors.
+    """
+    import pyodbc
+
+    query = """
+        SELECT
+            po.PONumber,
+            po.Description,
+            CONVERT(varchar, po.Date, 23)       AS PODate,
+            CONVERT(varchar, po.CreateDate, 23) AS CreateDate,
+            v.VendorNumber,
+            v.VendorName,
+            ps.Status,
+            po.Total,
+            RTRIM(ISNULL(sa.UserID, ''))        AS PurchaserUserID,
+            ISNULL(sa.FirstName, '') + ' ' + ISNULL(sa.LastName, '') AS PurchaserName,
+            sm.DocSendMethod                    AS SendMethod
+        FROM POOrders po
+        INNER JOIN APVendors   v  ON po.VendorID     = v.VendorID
+        INNER JOIN POStatuses  ps ON po.StatusID     = ps.StatusID
+        LEFT  JOIN ShAgents    sa ON po.PurchaserID  = sa.AgentID
+        LEFT  JOIN SHDocSendMethods sm ON po.SendMethodID = sm.DocSendMethodID
+        WHERE po.Sent = 0
+          AND po.StatusID = 1
+    """
+    params = []
+
+    if purchaser_user_id:
+        query += " AND LOWER(RTRIM(sa.UserID)) = LOWER(?)"
+        params.append(purchaser_user_id.strip())
+
+    if vendor_number:
+        query += " AND v.VendorNumber = ?"
+        params.append(vendor_number.strip())
+
+    query += " ORDER BY po.CreateDate DESC"
+
+    with pyodbc.connect(EA_DB_CONN) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        cols = [col[0] for col in cursor.description]
+        rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+
+    return rows
 
 
 @mcp.tool()

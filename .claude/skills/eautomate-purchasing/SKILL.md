@@ -80,21 +80,30 @@ get_purchase_orders_by_vendor(vendor_number)
 **Purchaser ID — always read from the environment, never ask the user:**
 When the user says "my POs", "my orders", or anything personalized, call `get_current_api_user()` first to get the purchaser_user_id (it reads EA_API_USER from the .env), then pass it to the relevant tool. Never ask the user for their username.
 
-**All placed POs system-wide (awaiting shipment, all branches):**
+**Open POs not yet sent to vendor (Sent = No) — the primary "what do I still need to send?" view:**
+```python
+uid = get_current_api_user()["user_id"]
+get_unsent_purchase_orders()                          # all purchasers, all vendors
+get_unsent_purchase_orders(purchaser_user_id=uid)    # current user only
+get_unsent_purchase_orders(vendor_number="12345")    # specific vendor
+```
+Queries the database directly (the SOAP API does not expose the Sent flag). Returns open POs where `Sent = No` — i.e. the PO has been created but not yet transmitted to the vendor. Includes vendor, description, date, total, purchaser, and send method.
+
+**Placed POs awaiting receipt (sent to vendor, not yet received):**
 ```python
 uid = get_current_api_user()["user_id"]
 get_purchase_orders_awaiting_shipment()                          # all purchasers
 get_purchase_orders_awaiting_shipment(purchaser_user_id=uid)    # current user only
 ```
-Returns full PO header data (vendor, status, purchaser user ID, description, dates) for every placed PO not yet received.
+Returns placed POs not yet received. Different from unsent POs — these have already been sent to the vendor and are waiting for goods to arrive.
 
-**Open (not-yet-placed) POs across all vendors:**
+**Open POs by vendor (SOAP, no sent-flag filter):**
 ```python
 uid = get_current_api_user()["user_id"]
 get_purchase_orders_by_vendor()                                  # all vendors, all purchasers
 get_purchase_orders_by_vendor(purchaser_user_id=uid, status="Open")  # current user, Open only
 ```
-Fetches POs with full header data and filters client-side by purchaser and/or status. When vendor is omitted the API returns all vendors — verify this works on the server before relying on it for bulk queries.
+Fetches POs with full header data and filters client-side by purchaser and/or status. Does not filter by sent flag. Use `get_unsent_purchase_orders` when you need the sent/unsent distinction.
 
 **All POs (list of PO numbers only, no status or purchaser fields):**
 ```
@@ -211,9 +220,11 @@ get_purchase_order_list_for_sales_order(so_number)
 | "How much do we have in stock?" | `get_item_inventory(item_number)` |
 | "Update the cost for this item from this vendor" | `set_vendor_item_cost(vendor, item, new_cost)` |
 | "Mark PO 5432 as placed" | `update_po_to_placed("5432", confirmation_number=...)` |
+| "What are my unsent POs?" / "What haven't I sent yet?" | `get_current_api_user()` → `get_unsent_purchase_orders(purchaser_user_id=uid)` |
+| "Show me all unsent POs" | `get_unsent_purchase_orders()` |
+| "What are my POs awaiting receipt?" / "What's been sent but not received?" | `get_current_api_user()` → `get_purchase_orders_awaiting_shipment(purchaser_user_id=uid)` |
 | "Show me all open POs across all branches" | `get_purchase_orders_awaiting_shipment()` |
-| "What are my open POs?" | `get_current_api_user()` → `get_purchase_orders_by_vendor(purchaser_user_id=uid, status="Open")` |
-| "What are my POs awaiting receipt?" | `get_current_api_user()` → `get_purchase_orders_awaiting_shipment(purchaser_user_id=uid)` |
+| "What are my open POs?" | `get_current_api_user()` → `get_unsent_purchase_orders(purchaser_user_id=uid)` |
 | "What are the open RTVs?" | Explain RTVs require the eAutomate desktop app — no API support |
 | "Annotate PO 5432 with SME pricing" | `annotate_po_with_sme("5432")` — writes SME contract/ref numbers (Xerox only) and copies SO contact info to PO remarks. Works for all vendors; TD Synnex remarks are auto-truncated to 60 chars |
 
