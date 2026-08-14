@@ -161,23 +161,29 @@ Key patterns:
 - Fields use `eaCodeType` for codes/IDs (use `_code()`), `String_ex` for text (use `_str_ex()`), `DateTime_ex` for dates (use `_date_ex()`)
 - When no dedicated method exists for a filter (e.g. calls by customer), fetch the full list and filter client-side
 
-## Xerox SME Pricing Tool (`sme.py`)
+## PO Annotation Tool (`sme.py`)
 
-`annotate_po_with_sme(po_number)` looks up each PO line item in the Xerox SME pricing matrix and writes the SME contract number + reference number to the PO remarks field.
+`annotate_po_with_sme(po_number)` annotates a purchase order's remarks with two things:
 
-**Matching logic:**
-1. Fetches the item record from eAutomate and reads the `OEMNumber` field.
-2. If `OEMNumber` is blank, falls back to using the eAutomate item code directly (Xerox item codes like `006R04400` are often identical to OEM numbers).
-3. Items with no match in the CSV are silently skipped — the tool only aborts if **zero** items match.
+1. **SO contact info** — always copied regardless of vendor or SME matches. Reads the linked sales order's Remarks and copies lines matching (case-insensitive):
+   - `notify customer`
+   - `contact name`
+   - `contact phone`
 
-**SO contact info:** Also copies the notify/contact lines from the linked sales order's Remarks to the PO. Only these line patterns are copied (case-insensitive keyword match):
-- Lines containing `notify customer`
-- Lines containing `contact name`
-- Lines containing `contact phone`
+   Everything else in the SO remarks (email, purchasing rep, reference WO, location unit) is dropped.
 
-Everything else in the SO remarks (email, purchasing rep, reference WO, location unit) is dropped.
+2. **Xerox SME contract/reference numbers** — only when `data/xerox_sme_pricing.csv` is present and items match. Intended for Distribution Management Vendor (Xerox) POs. Non-Xerox POs (Toshiba, TD Synnex, etc.) will have no SME matches, which is expected — contact info is still written.
 
-**CSV location:** `data/xerox_sme_pricing.csv` — excluded from git. The tool silently disables itself if the file is absent.
+**Tool registration:** Always registered. When the CSV is absent, SME lookup is skipped entirely but SO contact info is still written. The tool no longer disables itself based on CSV presence.
+
+**Matching logic (SME):**
+1. Fetches each item record and reads the `OEMNumber` field.
+2. If `OEMNumber` is blank, falls back to the eAutomate item code (Xerox codes like `006R04400` often match OEM numbers directly).
+3. Items with no match in the CSV are silently skipped — the tool does **not** abort on zero SME matches.
+
+**TD Synnex remarks limit:** When the PO vendor name contains "synnex" (case-insensitive), the contact lines are abbreviated (`Notify: / Name: / Phone:`, joined with ` | `) and hard-truncated at 60 characters to fit TD Synnex's PO remarks field limit.
+
+**CSV location:** `data/xerox_sme_pricing.csv` — excluded from git.
 
 **Updating the CSV (monthly):**
 1. Go to https://shopping.suppliesnetwork.com/Pricing/Search (log in as Brent — already authenticated in Chrome).

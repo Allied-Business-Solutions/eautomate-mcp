@@ -29,7 +29,9 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 - Post PO-linked AP vouchers; receive and voucher in a single call
 - Check PO status and vendor pricing; update line-item prices
 - Look up item inventory levels; get next PO number
-- Annotate Xerox POs with SME contract numbers from a pricing matrix (requires `data/xerox_sme_pricing.csv` — not distributed; tool is disabled if the file is absent)
+- Annotate any PO with SO contact info (notify customer / contact name / contact phone) copied from the linked sales order — works for Xerox, Toshiba, TD Synnex, and all other vendors
+- Add Xerox SME contract and reference numbers to PO remarks for Distribution Management Vendor POs (requires `data/xerox_sme_pricing.csv` — not distributed; SME lookup is skipped if absent but contact info is still written)
+- TD Synnex remarks are automatically abbreviated and capped at 60 characters
 
 **Customers & Equipment**
 - Search customers by name, look up equipment by serial number (single or bulk)

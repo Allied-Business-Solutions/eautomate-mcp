@@ -215,6 +215,7 @@ get_purchase_order_list_for_sales_order(so_number)
 | "What are my open POs?" | `get_current_api_user()` → `get_purchase_orders_by_vendor(purchaser_user_id=uid, status="Open")` |
 | "What are my POs awaiting receipt?" | `get_current_api_user()` → `get_purchase_orders_awaiting_shipment(purchaser_user_id=uid)` |
 | "What are the open RTVs?" | Explain RTVs require the eAutomate desktop app — no API support |
+| "Annotate PO 5432 with SME pricing" | `annotate_po_with_sme("5432")` — writes SME contract/ref numbers (Xerox only) and copies SO contact info to PO remarks. Works for all vendors; TD Synnex remarks are auto-truncated to 60 chars |
 
 ---
 
