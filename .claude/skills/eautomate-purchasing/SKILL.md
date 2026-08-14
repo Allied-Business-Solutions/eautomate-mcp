@@ -87,7 +87,7 @@ get_unsent_purchase_orders()                          # all purchasers, all vend
 get_unsent_purchase_orders(purchaser_user_id=uid)    # current user only
 get_unsent_purchase_orders(vendor_number="12345")    # specific vendor
 ```
-Queries the database directly (the SOAP API does not expose the Sent flag). Returns open POs where `Sent = No` — i.e. the PO has been created but not yet transmitted to the vendor. Includes vendor, description, date, total, purchaser, and send method.
+Returns open POs where `Sent = No` — i.e. the PO has been created but not yet transmitted to the vendor. Returns full PO records (vendor, purchaser, description, dates, line items, status). Uses the SOAP API; performance scales with the number of unsent POs.
 
 **Placed POs awaiting receipt (sent to vendor, not yet received):**
 ```python

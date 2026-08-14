@@ -1,6 +1,6 @@
 """eAutomate MCP — purchase order tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive, EA_DB_CONN
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
 from typing import Optional
 from datetime import datetime
 
@@ -298,59 +298,63 @@ def get_unsent_purchase_orders(purchaser_user_id: Optional[str] = None,
                                 vendor_number: Optional[str] = None) -> list:
     """
     List open purchase orders that have NOT yet been sent to the vendor
-    (Sent = No in eAutomate). Queries the database directly because the
-    SOAP API does not expose the Sent flag.
+    (Sent = No in eAutomate). Uses the SOAP API — no database access required.
 
-    Returns PO number, vendor, description, date, total, purchaser, and
-    send method for each unsent open PO.
+    Returns full purchase order records including vendor, purchaser, description,
+    dates, line items, and status. Each unsent PO requires a separate SOAP fetch,
+    so performance scales with the number of unsent POs.
 
     Args:
         purchaser_user_id: Filter to a specific purchaser's eAutomate user ID
                            (e.g. "TLIEBENTHAL"), case-insensitive. Omit for all.
         vendor_number: Filter to a specific vendor number. Omit for all vendors.
     """
-    import pyodbc
+    raw = _serialize(_client().service.getPurchaseOrderListBySentId(
+        Auth=_auth(),
+        SentId=0,
+    ))
+    details_wrapper = (raw or {}).get("Details") or {}
+    po_list = details_wrapper.get("PurchaseOrderListDetail") or []
+    if not po_list:
+        return []
+    if not isinstance(po_list, list):
+        po_list = [po_list]
 
-    query = """
-        SELECT
-            po.PONumber,
-            po.Description,
-            CONVERT(varchar, po.Date, 23)       AS PODate,
-            CONVERT(varchar, po.CreateDate, 23) AS CreateDate,
-            v.VendorNumber,
-            v.VendorName,
-            ps.Status,
-            po.Total,
-            RTRIM(ISNULL(sa.UserID, ''))        AS PurchaserUserID,
-            ISNULL(sa.FirstName, '') + ' ' + ISNULL(sa.LastName, '') AS PurchaserName,
-            sm.DocSendMethod                    AS SendMethod
-        FROM POOrders po
-        INNER JOIN APVendors   v  ON po.VendorID     = v.VendorID
-        INNER JOIN POStatuses  ps ON po.StatusID     = ps.StatusID
-        LEFT  JOIN ShAgents    sa ON po.PurchaserID  = sa.AgentID
-        LEFT  JOIN SHDocSendMethods sm ON po.SendMethodID = sm.DocSendMethodID
-        WHERE po.Sent = 0
-          AND po.StatusID = 1
-    """
-    params = []
+    results = []
+    for item in po_list:
+        po_num_field = item.get("PONumber")
+        po_num = (
+            po_num_field.get("Value")
+            if isinstance(po_num_field, dict)
+            else po_num_field
+        )
+        if not po_num:
+            continue
 
-    if purchaser_user_id:
-        query += " AND LOWER(RTRIM(sa.UserID)) = LOWER(?)"
-        params.append(purchaser_user_id.strip())
+        po = _serialize(_client().service.getPurchaseOrder(
+            Auth=_auth(),
+            PurchaseOrderNumber=_code(code_val=po_num),
+        ))
+        if not po:
+            continue
 
-    if vendor_number:
-        query += " AND v.VendorNumber = ?"
-        params.append(vendor_number.strip())
+        if purchaser_user_id:
+            purchaser = po.get("optPurchasersUserID") or ""
+            if isinstance(purchaser, dict):
+                purchaser = purchaser.get("Value") or ""
+            if purchaser.lower() != purchaser_user_id.lower():
+                continue
 
-    query += " ORDER BY po.CreateDate DESC"
+        if vendor_number:
+            vendor = po.get("Vendor") or ""
+            if isinstance(vendor, dict):
+                vendor = vendor.get("Value") or ""
+            if vendor.lower() != vendor_number.lower():
+                continue
 
-    with pyodbc.connect(EA_DB_CONN) as conn:
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        cols = [col[0] for col in cursor.description]
-        rows = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        results.append(po)
 
-    return rows
+    return results
 
 
 @mcp.tool()
