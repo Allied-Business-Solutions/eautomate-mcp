@@ -1,6 +1,9 @@
 # WSDL — local reference only
 wsdl service description.txt
 
+# Xerox SME pricing matrix — not distributed; drop your own copy in data/
+data/xerox_sme_pricing.csv
+
 # Environment / secrets — never commit
 .env
 .env.*

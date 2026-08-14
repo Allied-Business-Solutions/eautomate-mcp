@@ -29,6 +29,7 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 - Post PO-linked AP vouchers; receive and voucher in a single call
 - Check PO status and vendor pricing; update line-item prices
 - Look up item inventory levels; get next PO number
+- Annotate Xerox POs with SME contract numbers from a pricing matrix (requires `data/xerox_sme_pricing.csv` — not distributed; tool is disabled if the file is absent)
 
 **Customers & Equipment**
 - Search customers by name, look up equipment by serial number (single or bulk)
@@ -223,6 +224,9 @@ eautomate/
     contracts.py            # contract lookup
     technicians.py          # technician records, availability, GPS, transfers
     finance.py              # GL journals, AP vouchers, AR receipts
+    sme.py                  # Xerox SME pricing annotation (enabled when data/xerox_sme_pricing.csv exists)
+data/
+  xerox_sme_pricing.csv     # Not distributed — drop your own copy here to enable annotate_po_with_sme
 requirements.txt
 .env                        # Your credentials — never committed
 CLAUDE.md                   # Developer guide for adding tools
