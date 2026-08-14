@@ -215,29 +215,44 @@ def add_equipment(equipment_number: str,
 @mcp.tool()
 def save_equipment(equipment_number: str,
                    active: Optional[bool] = None,
+                   customer_number: Optional[str] = None,
+                   bill_to_number: Optional[str] = None,
                    address: Optional[str] = None,
                    city: Optional[str] = None,
                    state: Optional[str] = None,
                    zip_code: Optional[str] = None,
-                   ip_address: Optional[str] = None,
-                   mac_address: Optional[str] = None,
+                   location: Optional[str] = None,
+                   contact: Optional[str] = None,
+                   contact_phone: Optional[str] = None,
                    technician_code: Optional[str] = None,
-                   remarks: Optional[str] = None) -> dict:
+                   territory_code: Optional[str] = None,
+                   remarks: Optional[str] = None,
+                   ip_address: Optional[str] = None,
+                   mac_address: Optional[str] = None) -> dict:
     """
     Update an existing equipment record. Fetches current values first and
     overlays only the fields you supply.
 
+    Use customer_number + address/city/state/zip_code together when moving
+    equipment to a new customer location (Church Moves).
+
     Args:
         equipment_number: Equipment code to update (required)
         active: Set active/inactive status
+        customer_number: Reassign to a different customer
+        bill_to_number: Change bill-to customer (defaults to customer_number if omitted during a move)
         address: New street address
         city: New city
         state: New state
         zip_code: New ZIP
+        location: Location description (room, floor, building)
+        contact: Contact name at this location
+        contact_phone: Contact phone at this location
+        technician_code: Reassign technician
+        territory_code: Reassign territory
+        remarks: Update remarks/notes
         ip_address: New IP address
         mac_address: New MAC address
-        technician_code: Reassign technician
-        remarks: Update remarks/notes
     """
     current = _client().service.getEquipment(
         Auth=_auth(), EquipmentNumber=_code(code_val=equipment_number)
@@ -255,62 +270,66 @@ def save_equipment(equipment_number: str,
             return _code(code_val=new_val)
         return current_field or _code()
 
+    # When moving to a new customer, default bill_to to that same customer
+    # unless bill_to_number is explicitly provided.
+    effective_bill_to = bill_to_number if bill_to_number is not None else customer_number
+
     result = _client().service.saveEquipment(
         Auth=_auth(),
         Equipment={
             "EquipmentNumber":  current.EquipmentNumber,
             "ItemNumber":       current.ItemNumber       or _code(),
             "SerialNumber":     current.SerialNumber     or _str_ex(""),
-            "CustomerNumber":   current.CustomerNumber   or _code(),
-            "BillToNumber":     current.BillToNumber     or _code(),
+            "CustomerNumber":   _pick_code(customer_number,      current.CustomerNumber),
+            "BillToNumber":     _pick_code(effective_bill_to,    current.BillToNumber),
             "BillCode":         current.BillCode         or _code(),
             "ResponseTime":     current.ResponseTime     or _int_ex(0),
             "LocationNumber":   current.LocationNumber   or _code(),
-            "Address":          _pick_str(address,     current.Address),
-            "City":             _pick_str(city,        current.City),
-            "State":            _pick_str(state,       current.State),
-            "Zip":              _pick_str(zip_code,    current.Zip),
-            "Country":          current.Country         or _str_ex("USA"),
-            "Location":         current.Location        or _str_ex(""),
-            "Contact":          current.Contact         or _str_ex(""),
-            "ContactPhone":     current.ContactPhone    or _str_ex(""),
-            "ContactFax":       current.ContactFax      or _str_ex(""),
-            "DecisionMaker":    current.DecisionMaker   or _str_ex(""),
+            "Address":          _pick_str(address,       current.Address),
+            "City":             _pick_str(city,          current.City),
+            "State":            _pick_str(state,         current.State),
+            "Zip":              _pick_str(zip_code,      current.Zip),
+            "Country":          current.Country          or _str_ex("USA"),
+            "Location":         _pick_str(location,      current.Location),
+            "Contact":          _pick_str(contact,       current.Contact),
+            "ContactPhone":     _pick_str(contact_phone, current.ContactPhone),
+            "ContactFax":       current.ContactFax       or _str_ex(""),
+            "DecisionMaker":    current.DecisionMaker    or _str_ex(""),
             "DecisionMakerPhone": current.DecisionMakerPhone or _str_ex(""),
             "DecisionMakerFax": current.DecisionMakerFax or _str_ex(""),
-            "TerritoryCode":    current.TerritoryCode   or _code(),
+            "TerritoryCode":    _pick_code(territory_code, current.TerritoryCode),
             "TechnicianNumber": _pick_code(technician_code, current.TechnicianNumber),
-            "ModelNumber":      current.ModelNumber     or _code(),
+            "ModelNumber":      current.ModelNumber      or _code(),
             "ModelDescription": current.ModelDescription or _str_ex(""),
-            "MakeNumber":       current.MakeNumber      or _code(),
-            "MakeDescription":  current.MakeDescription or _str_ex(""),
+            "MakeNumber":       current.MakeNumber       or _code(),
+            "MakeDescription":  current.MakeDescription  or _str_ex(""),
             "Active":           _bool_ex(active) if active is not None else (current.Active or _bool_ex(True)),
-            "Hosting":          current.Hosting         or _bool_ex(False),
-            "Attached":         current.Attached        or _bool_ex(False),
-            "IsMetered":        current.IsMetered       or _bool_ex(True),
+            "Hosting":          current.Hosting          or _bool_ex(False),
+            "Attached":         current.Attached         or _bool_ex(False),
+            "IsMetered":        current.IsMetered        or _bool_ex(True),
             "RequireMeteronServiceCalls": current.RequireMeteronServiceCalls or _bool_ex(False),
-            "PriorityCode":     current.PriorityCode    or _code(),
-            "PriorityWeight":   current.PriorityWeight  or _double_ex(0),
+            "PriorityCode":     current.PriorityCode     or _code(),
+            "PriorityWeight":   current.PriorityWeight   or _double_ex(0),
             "AllowAutoMeterRequests": current.AllowAutoMeterRequests or _bool_ex(True),
-            "EinfoEnabled":     current.EinfoEnabled    or _bool_ex(False),
-            "MACAddress":       _pick_str(mac_address,  current.MACAddress),
-            "IPAddress":        _pick_str(ip_address,   current.IPAddress),
-            "ShipToContact":    current.ShipToContact   or _code(),
-            "StatusCode":       current.StatusCode      or _code(),
-            "ConditionCode":    current.ConditionCode   or _code(),
-            "ParentNumber":     current.ParentNumber    or _code(),
+            "EinfoEnabled":     current.EinfoEnabled     or _bool_ex(False),
+            "MACAddress":       _pick_str(mac_address,   current.MACAddress),
+            "IPAddress":        _pick_str(ip_address,    current.IPAddress),
+            "ShipToContact":    current.ShipToContact    or _code(),
+            "StatusCode":       current.StatusCode       or _code(),
+            "ConditionCode":    current.ConditionCode    or _code(),
+            "ParentNumber":     current.ParentNumber     or _code(),
             "EquipmentContactNumber": current.EquipmentContactNumber or _code(),
             "DecisionContactNumber":  current.DecisionContactNumber  or _code(),
-            "InstallDate":      current.InstallDate     or _date_ex(),
-            "OfficeOpen":       current.OfficeOpen      or _date_ex(),
-            "OfficeClose":      current.OfficeClose     or _date_ex(),
-            "WarrantyDate":     current.WarrantyDate    or _date_ex(),
-            "PMMeterDue":       current.PMMeterDue      or _int_ex(0),
-            "PMDateDue":        current.PMDateDue       or _date_ex(),
-            "PMUseMeter":       current.PMUseMeter      or _bool_ex(False),
-            "PMUseDate":        current.PMUseDate       or _bool_ex(False),
-            "WarrantyMeter":    current.WarrantyMeter   or _int_ex(0),
-            "Remarks":          _pick_str(remarks,      current.Remarks),
+            "InstallDate":      current.InstallDate      or _date_ex(),
+            "OfficeOpen":       current.OfficeOpen       or _date_ex(),
+            "OfficeClose":      current.OfficeClose      or _date_ex(),
+            "WarrantyDate":     current.WarrantyDate     or _date_ex(),
+            "PMMeterDue":       current.PMMeterDue       or _int_ex(0),
+            "PMDateDue":        current.PMDateDue        or _date_ex(),
+            "PMUseMeter":       current.PMUseMeter       or _bool_ex(False),
+            "PMUseDate":        current.PMUseDate        or _bool_ex(False),
+            "WarrantyMeter":    current.WarrantyMeter    or _int_ex(0),
+            "Remarks":          _pick_str(remarks,       current.Remarks),
         }
     )
     return _serialize(result)

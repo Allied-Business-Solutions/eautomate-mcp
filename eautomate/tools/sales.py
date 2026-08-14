@@ -342,3 +342,4 @@ def add_sales_order(customer_number: str,
         }
     )
     return _serialize(result)
+

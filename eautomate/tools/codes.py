@@ -1,6 +1,6 @@
 """eAutomate MCP — utility / auth tools."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive, EA_API_USER
 from typing import Optional
 from datetime import datetime
 
@@ -8,6 +8,16 @@ from datetime import datetime
 # ===========================================================================
 #  UTILITY / AUTH
 # ===========================================================================
+
+@mcp.tool()
+def get_current_api_user() -> dict:
+    """
+    Return the eAutomate username configured in this session's .env file.
+    Use this as the purchaser_user_id when filtering POs or other records by the current user.
+    No API call — reads from the local environment.
+    """
+    return {"user_id": EA_API_USER}
+
 
 @mcp.tool()
 def ping() -> dict:

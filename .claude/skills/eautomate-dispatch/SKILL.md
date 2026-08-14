@@ -1,6 +1,6 @@
 ---
 name: eautomate-dispatch
-description: Use this skill for any service call or dispatch workflow in eAutomate — opening calls, dispatching techs, reassigning, completing, and invoicing. Trigger on phrases like "open a service call", "create a ticket", "dispatch to", "assign a tech", "complete the call", "mark call done", "invoice the call", "who's dispatched", "what calls are open", "reassign the call", "check tech availability", "show open calls", "service call for customer", "call status", "undispatch".
+description: Use this skill for any service call or dispatch workflow in eAutomate — opening calls, dispatching techs, reassigning, completing, and invoicing. Also covers equipment moves (updating location, customer, or address). Trigger on phrases like "open a service call", "create a ticket", "dispatch to", "assign a tech", "complete the call", "mark call done", "invoice the call", "who's dispatched", "what calls are open", "reassign the call", "check tech availability", "show open calls", "service call for customer", "call status", "undispatch", "move equipment", "equipment move", "update equipment location", "Church move", "relocate machine".
 version: 1.0.0
 ---
 
@@ -186,6 +186,53 @@ get_call(call_number)
 
 ---
 
+## Workflow: Equipment Moves (Church Moves)
+
+When a machine is relocated — same customer but different building, or transferred to a different Church location/sub-account:
+
+**Step 1 — Find the equipment:**
+```
+find_equipment_by_serial(serial_number)
+# or
+get_equipment_list_for_customer(customer_number)
+```
+
+**Step 2 — Update location (same customer, address change only):**
+```
+save_equipment(
+    equipment_number=...,
+    address="123 New St",
+    city="Boise",
+    state="ID",
+    zip_code="83702",
+    location="Library - 2nd Floor",    # room/building description
+    contact="Jane Smith",
+    contact_phone="208-555-1234"
+)
+```
+
+**Step 3 — Transfer to a different customer/sub-account:**
+```
+save_equipment(
+    equipment_number=...,
+    customer_number="CH00-NEWLOC",     # new customer code
+    address="456 New Campus Blvd",
+    city="Meridian",
+    state="ID",
+    zip_code="83642",
+    location="Front Office",
+    contact="John Doe",
+    contact_phone="208-555-5678"
+)
+```
+When `customer_number` is supplied, `bill_to_number` defaults to the same customer. Pass `bill_to_number` explicitly if it should differ.
+
+**Step 4 — Confirm with the user** that the contract assignment should be updated in the desktop app if needed (contract-to-equipment links are not managed through the MCP).
+
+> **Contract note:** Moving equipment to a new customer does not automatically update the service contract. Contract adjustments must be done in the eAutomate desktop.
+
+---
+
 ## Workflow: Technician Availability
 
 ```
@@ -217,6 +264,8 @@ Returns all techs with territory and warehouse assignments.
 | "Cancel call 12345 — customer called back" | `get_code_list("cancel_codes")`, then `cancel_service_call("12345", cancel_code=...)` |
 | "Put call 12345 on hold — waiting for parts" | `get_code_list("hold_codes")`, then `put_call_on_hold("12345", hold_code=...)` |
 | "Remove the hold on call 12345" | `remove_call_hold("12345")` |
+| "Move equipment E-1234 to a new location" | `save_equipment("E-1234", address=..., city=..., location=..., contact=...)` |
+| "Transfer machine to a different Church sub-account" | `save_equipment(equipment_number, customer_number="NEW-CUST", address=..., ...)` |
 
 ---
 

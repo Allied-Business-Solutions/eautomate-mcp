@@ -1,6 +1,6 @@
 ---
 name: eautomate-purchasing
-description: Use this skill for purchasing and purchase order workflows in eAutomate — creating POs, checking PO status, receiving inventory, finding vendor pricing, and managing items. Trigger on phrases like "create a purchase order", "create a PO", "check PO status", "receive a PO", "receive inventory", "mark PO placed", "vendor pricing", "item cost", "add a vendor", "what's on order", "open POs for vendor", "PO number", "purchase order for", "order from vendor", "item pricing", "check stock", "inventory levels".
+description: Use this skill for purchasing and purchase order workflows in eAutomate — creating POs, checking PO status, receiving inventory, finding vendor pricing, and managing items. Trigger on phrases like "create a purchase order", "create a PO", "check PO status", "receive a PO", "receive inventory", "mark PO placed", "vendor pricing", "item cost", "add a vendor", "what's on order", "open POs for vendor", "PO number", "purchase order for", "order from vendor", "item pricing", "check stock", "inventory levels", "open POs for customer", "track POs", "Church orders", "sales orders for customer", "what's open for".
 version: 1.0.0
 ---
 
@@ -77,7 +77,26 @@ Returns full detail including line items, quantities ordered/received, and statu
 get_purchase_orders_by_vendor(vendor_number)
 ```
 
-**All POs (system-wide):**
+**Purchaser ID — always read from the environment, never ask the user:**
+When the user says "my POs", "my orders", or anything personalized, call `get_current_api_user()` first to get the purchaser_user_id (it reads EA_API_USER from the .env), then pass it to the relevant tool. Never ask the user for their username.
+
+**All placed POs system-wide (awaiting shipment, all branches):**
+```python
+uid = get_current_api_user()["user_id"]
+get_purchase_orders_awaiting_shipment()                          # all purchasers
+get_purchase_orders_awaiting_shipment(purchaser_user_id=uid)    # current user only
+```
+Returns full PO header data (vendor, status, purchaser user ID, description, dates) for every placed PO not yet received.
+
+**Open (not-yet-placed) POs across all vendors:**
+```python
+uid = get_current_api_user()["user_id"]
+get_purchase_orders_by_vendor()                                  # all vendors, all purchasers
+get_purchase_orders_by_vendor(purchaser_user_id=uid, status="Open")  # current user, Open only
+```
+Fetches POs with full header data and filters client-side by purchaser and/or status. When vendor is omitted the API returns all vendors — verify this works on the server before relying on it for bulk queries.
+
+**All POs (list of PO numbers only, no status or purchaser fields):**
 ```
 get_purchase_order_list(since_timestamp=...)   # use timestamp to limit results
 ```
@@ -154,6 +173,32 @@ get_item(item_number)             # includes on-hand, ordered, allocated quantit
 
 ---
 
+## Workflow: Tracking Orders for a Specific Customer
+
+For customers like Church whose orders span hardware and supplies:
+
+**All open POs system-wide (all branches):**
+```
+get_purchase_orders_awaiting_shipment()
+```
+This is the primary "what's on order" dashboard — filter the results by vendor name or description to find Church orders.
+
+**POs for a specific vendor:**
+```
+get_purchase_orders_by_vendor(vendor_number)
+```
+
+**POs linked to a specific sales order:**
+```
+get_purchase_order_list_for_sales_order(so_number)
+```
+
+> **Customer-specific SO/PO filtering:** The eAutomate SOAP API does not support filtering sales orders or purchase orders by customer directly. For a full list of SOs or POs for a specific Church sub-account, use the eAutomate desktop.
+
+> **RTVs (Return to Vendor):** No API or MCP tool exists for RTVs. Use the eAutomate desktop to view or create RTVs.
+
+---
+
 ## Common Questions & How to Answer Them
 
 | User says | What to do |
@@ -166,6 +211,10 @@ get_item(item_number)             # includes on-hand, ordered, allocated quantit
 | "How much do we have in stock?" | `get_item_inventory(item_number)` |
 | "Update the cost for this item from this vendor" | `set_vendor_item_cost(vendor, item, new_cost)` |
 | "Mark PO 5432 as placed" | `update_po_to_placed("5432", confirmation_number=...)` |
+| "Show me all open POs across all branches" | `get_purchase_orders_awaiting_shipment()` |
+| "What are my open POs?" | `get_current_api_user()` → `get_purchase_orders_by_vendor(purchaser_user_id=uid, status="Open")` |
+| "What are my POs awaiting receipt?" | `get_current_api_user()` → `get_purchase_orders_awaiting_shipment(purchaser_user_id=uid)` |
+| "What are the open RTVs?" | Explain RTVs require the eAutomate desktop app — no API support |
 
 ---
 

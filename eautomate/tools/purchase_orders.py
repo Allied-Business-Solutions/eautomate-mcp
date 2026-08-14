@@ -123,11 +123,21 @@ def get_po_bill_to_by_custom_property(property_name: str, property_value: str) -
 
 
 @mcp.tool()
-def get_purchase_orders_awaiting_shipment() -> list:
+def get_purchase_orders_awaiting_shipment(purchaser_user_id: Optional[str] = None) -> list:
     """
     List all purchase orders that have been placed but not yet received.
+    Each result includes vendor, status, purchaser user ID, description, and line items.
+
+    Args:
+        purchaser_user_id: Filter to a specific purchaser's eAutomate user ID (e.g. "TLIEBENTHAL").
+                           Case-insensitive. Omit to return all purchasers.
     """
-    return _serialize(_client().service.getPurchaseOrdersAwaitingShipment(auth=_auth()))
+    results = _serialize(_client().service.getPurchaseOrdersAwaitingShipment(auth=_auth()))
+    if purchaser_user_id:
+        uid = purchaser_user_id.lower()
+        results = [po for po in (results or [])
+                   if (po.get("optPurchasersUserID") or "").lower() == uid]
+    return results
 
 
 @mcp.tool()
@@ -248,17 +258,39 @@ def add_resupply_notification_order(vendor_number: str,
 
 
 @mcp.tool()
-def get_purchase_orders_by_vendor(vendor_number: str) -> list:
+def get_purchase_orders_by_vendor(vendor_number: Optional[str] = None,
+                                   purchaser_user_id: Optional[str] = None,
+                                   status: Optional[str] = None) -> list:
     """
-    All open purchase orders for a vendor.
+    Purchase orders for a vendor, with optional purchaser and status filters.
+
+    When vendor_number is omitted the API attempts to return all POs system-wide with full
+    header data (purchaser, status, description, dates). Useful for "my open POs" queries.
+    Note: all-vendor behavior depends on the eAutomate server version — verify before relying on it.
 
     Args:
-        vendor_number: Vendor number code
+        vendor_number: Vendor number code (optional — omit to query across all vendors)
+        purchaser_user_id: Filter by purchaser's eAutomate user ID (e.g. "TLIEBENTHAL"), case-insensitive
+        status: Filter by PO status value (e.g. "Open", "Placed"), case-insensitive
     """
-    return _serialize(_client().service.getPurchaseOrdersByVendor(
+    results = _serialize(_client().service.getPurchaseOrdersByVendor(
         Auth=_auth(),
-        vendor=vendor_number,
+        vendor=vendor_number or "",
     ))
+    if purchaser_user_id:
+        uid = purchaser_user_id.lower()
+        results = [po for po in (results or [])
+                   if (po.get("optPurchasersUserID") or "").lower() == uid]
+    if status:
+        s = status.lower()
+        filtered = []
+        for po in (results or []):
+            st = po.get("Status")
+            st_str = st if isinstance(st, str) else ((st or {}).get("Value") or "")
+            if st_str.lower() == s:
+                filtered.append(po)
+        results = filtered
+    return results
 
 
 @mcp.tool()
