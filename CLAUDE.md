@@ -10,10 +10,10 @@ A Python FastMCP server that bridges Claude and the eAutomate PublicAPI (SOAP) f
 
 ## Environment Setup
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (for Allied, the server is `boise.allied.tech`):
 
 ```
-EA_API_URL=https://yourserver/pip/PublicAPIService.asmx
+EA_API_URL=https://boise.allied.tech/pip/PublicAPIService.asmx
 EA_API_USER=eautomate_username
 EA_API_PASS=eautomate_password
 EA_API_COMPANY=1
@@ -106,13 +106,15 @@ Rules:
 
 ```
 server.py                    # Entry point — 18 lines, just imports modules and runs
+data/
+  xerox_sme_pricing.csv      # Xerox SME pricing matrix (NOT in git — download monthly)
 eautomate/
   core.py                    # Client, auth, helpers, error handling, logging, validators
   tools/
     codes.py                 # ping, authorize, get_code_list
     customers.py             # get_customer, search, add, save, contacts
     equipment.py             # get_equipment, add, save, makes, models
-    meters.py                # submit_meter_reading, get_meters_due, counts
+    meters.py                # submit_meter_reading, get_meters_due, counts (requires pyodbc)
     service_calls.py         # add, dispatch, cancel, hold, filtered lists
     inventory.py             # get_item, add, inventory levels, vendor pricing
     purchase_orders.py       # add, receive, get, update_to_placed
@@ -121,6 +123,7 @@ eautomate/
     contracts.py             # get_contract, get_contracts_for_customer
     technicians.py           # get_technician, availability, GPS
     finance.py               # GL journals, AP vouchers, AR receipts
+    sme.py                   # annotate_po_with_sme — only active when CSV is present
 ```
 
 To add a new tool, create or edit the relevant module in `eautomate/tools/`. Do not put tools in `server.py`.
@@ -157,3 +160,50 @@ Key patterns:
 - Method names use camelCase: `getCall`, `addCall`, `setCallDispatched`
 - Fields use `eaCodeType` for codes/IDs (use `_code()`), `String_ex` for text (use `_str_ex()`), `DateTime_ex` for dates (use `_date_ex()`)
 - When no dedicated method exists for a filter (e.g. calls by customer), fetch the full list and filter client-side
+
+## Xerox SME Pricing Tool (`sme.py`)
+
+`annotate_po_with_sme(po_number)` looks up each PO line item in the Xerox SME pricing matrix and writes the SME contract number + reference number to the PO remarks field.
+
+**Matching logic:**
+1. Fetches the item record from eAutomate and reads the `OEMNumber` field.
+2. If `OEMNumber` is blank, falls back to using the eAutomate item code directly (Xerox item codes like `006R04400` are often identical to OEM numbers).
+3. Items with no match in the CSV are silently skipped — the tool only aborts if **zero** items match.
+
+**SO contact info:** Also copies the notify/contact lines from the linked sales order's Remarks to the PO. Only these line patterns are copied (case-insensitive keyword match):
+- Lines containing `notify customer`
+- Lines containing `contact name`
+- Lines containing `contact phone`
+
+Everything else in the SO remarks (email, purchasing rep, reference WO, location unit) is dropped.
+
+**CSV location:** `data/xerox_sme_pricing.csv` — excluded from git. The tool silently disables itself if the file is absent.
+
+**Updating the CSV (monthly):**
+1. Go to https://shopping.suppliesnetwork.com/Pricing/Search (log in as Brent — already authenticated in Chrome).
+2. Set Vendor = **Xerox**, leave other filters blank.
+3. Click **Matrix Export** and accept the download popup.
+4. Replace `data/xerox_sme_pricing.csv` with the downloaded file.
+
+**Excluded programs** (never selected even if they have the lowest price):
+- Xerox - SourceWell Eligible Customers
+- Xerox - SIP Program for Authorized DTP Partners
+- Xerox - Multiple Dealers / NASPO Eligible Dealers Only
+
+## Installing on a New Machine
+
+Dependencies beyond `requirements.txt` (add these manually until requirements.txt is updated):
+
+```bash
+pip install pyodbc
+```
+
+**Known `mcp` version issue:** `mcp` 2.0.0 removed `mcp.server.fastmcp`. If a new machine installs the latest `mcp` and gets `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`, downgrade:
+
+```bash
+pip install "mcp<2.0"
+```
+
+The server has been tested against `mcp` 1.29.0.
+
+**Windows auth for DB:** `EA_DB_CONN` uses `Trusted_Connection=yes` — the Windows account running Claude Code must have read access to the `YourDatabase` SQL Server database. Required for `add_ap_voucher` (AP voucher number sequencing).
