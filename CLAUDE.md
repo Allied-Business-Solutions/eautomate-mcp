@@ -198,18 +198,10 @@ Key patterns:
 
 ## Installing on a New Machine
 
-Dependencies beyond `requirements.txt` (add these manually until requirements.txt is updated):
-
 ```bash
-pip install pyodbc
+pip install -r requirements.txt
 ```
 
-**Known `mcp` version issue:** `mcp` 2.0.0 removed `mcp.server.fastmcp`. If a new machine installs the latest `mcp` and gets `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`, downgrade:
-
-```bash
-pip install "mcp<2.0"
-```
-
-The server has been tested against `mcp` 1.29.0.
+`requirements.txt` pins `mcp[cli]<2.0` (mcp 2.0 removed `mcp.server.fastmcp`) and includes `pyodbc`. The server has been tested against `mcp` 1.29.0.
 
 **Windows auth for DB:** `EA_DB_CONN` uses `Trusted_Connection=yes` — the Windows account running Claude Code must have read access to the `YourDatabase` SQL Server database. Required for `add_ap_voucher` (AP voucher number sequencing).
