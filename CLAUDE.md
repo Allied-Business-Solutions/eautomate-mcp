@@ -10,10 +10,10 @@ A Python FastMCP server that bridges Claude and the eAutomate PublicAPI (SOAP) f
 
 ## Environment Setup
 
-Create a `.env` file in the project root (for Allied, the server is `boise.allied.tech`):
+Create a `.env` file in the project root:
 
 ```
-EA_API_URL=https://boise.allied.tech/pip/PublicAPIService.asmx
+EA_API_URL=https://your-server/pip/PublicAPIService.asmx
 EA_API_USER=eautomate_username
 EA_API_PASS=eautomate_password
 EA_API_COMPANY=1
