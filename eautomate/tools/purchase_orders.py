@@ -2,7 +2,7 @@
 
 from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _ts, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 # ===========================================================================
@@ -830,14 +830,40 @@ def get_ap_voucher_applications_by_date(start_date: str, end_date: str) -> list:
 
 
 @mcp.tool()
-def get_voucher_list(since_timestamp: Optional[str] = None) -> list:
+def get_voucher_list(since_date: Optional[str] = None,
+                     since_timestamp: Optional[str] = None,
+                     limit: int = 500) -> dict:
     """
-    List AP vouchers updated since a timestamp (or all if omitted).
+    List AP vouchers. Returns at most `limit` records (default 500).
+
+    Without filters, defaults to vouchers from the last 90 days.
+    Use since_date for a specific cutoff, or since_timestamp for incremental sync.
 
     Args:
-        since_timestamp: Optional e-automate timestamp string
+        since_date: ISO date string — return vouchers on or after this date (optional)
+        since_timestamp: e-automate internal timestamp for incremental sync (optional)
+        limit: Max records to return (default 500, max 2000)
     """
-    return _serialize(_client().service.getVoucherList(Auth=_auth(), **_ts(since_timestamp)))
+    limit = min(max(1, limit), 2000)
+
+    if since_timestamp is not None:
+        ts_arg = since_timestamp
+    elif since_date is not None:
+        ts_arg = since_date + "T00:00:00"
+    else:
+        ts_arg = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%dT00:00:00")
+
+    rows = _serialize(_client().service.getVoucherList(Auth=_auth(), TimeStamp=ts_arg))
+    if not isinstance(rows, list):
+        rows = [rows] if rows else []
+
+    truncated = len(rows) > limit
+    return {
+        "vouchers": rows[:limit],
+        "count": len(rows[:limit]),
+        "truncated": truncated,
+        "note": f"Results capped at {limit}. Pass a narrower since_date or increase limit (max 2000)." if truncated else None,
+    }
 
 
 @mcp.tool()
