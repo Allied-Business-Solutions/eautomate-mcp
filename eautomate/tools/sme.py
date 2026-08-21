@@ -1,6 +1,7 @@
 """eAutomate MCP — PO annotation: Xerox SME pricing + SO contact remarks."""
 
 import csv
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -26,14 +27,23 @@ _EXCLUDED_PROGRAMS = {
 _TDSYNNEX_MAX_REMARKS = 60
 _TDSYNNEX_VENDOR_KEYWORDS = ("synnex",)
 
-_CONTACT_KEYWORDS = ("notify customer", "contact name", "contact phone")
+# Lines containing any of these keywords are treated as delivery/contact info.
+# Any line with a phone number is also captured (see _PHONE_RE below).
+_CONTACT_KEYWORDS = (
+    "notify customer",
+    "contact name",
+    "contact phone",
+    "alternate contact",
+    "appointment",
+    "inside delivery",
+    "delivery required",
+)
 
-# Abbreviated labels used when we need to fit within TD Synnex's 60-char limit
-_CONTACT_ABBREVIATIONS = {
-    "notify customer": "Notify",
-    "contact name": "Name",
-    "contact phone": "Phone",
-}
+# Phone number pattern including optional extension (ext. 2, x2, x 2, etc.)
+_PHONE_RE = re.compile(
+    r'\d{3}[-.\s]\d{3,4}[-.\s]\d{4}(?:\s*(?:ext\.?|x)\s*\d+)?',
+    re.I,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -97,31 +107,92 @@ def _best_sme(oem: str, pricing: dict) -> Optional[tuple[str, str]]:
     return sme, ref
 
 
-def _extract_contact_lines(remarks: str) -> str:
-    """Return only the notify/contact-name/contact-phone lines from SO remarks."""
-    kept = [
-        line for line in remarks.splitlines()
-        if any(kw in line.lower() for kw in _CONTACT_KEYWORDS)
-    ]
-    return "\n".join(kept)
+def _is_name_word(word: str) -> bool:
+    """True if word looks like a proper noun: Title Case, not ALL CAPS."""
+    w = word.rstrip(':,.')
+    return bool(w) and w[0].isupper() and any(c.islower() for c in w[1:])
 
 
-def _abbreviate_contact_lines(contact: str) -> str:
+def _extract_contact_lines(remarks: str) -> list[str]:
     """
-    Shorten contact lines for TD Synnex's 60-char remarks limit.
-    Joins all fields on one line separated by ' | ', then hard-truncates at 60.
+    Return contact/delivery-relevant lines from SO remarks, cleaned of ** markers.
+    Captures lines matching known keywords OR containing a phone number.
     """
-    parts = []
-    for line in contact.splitlines():
-        line_lower = line.lower()
-        for kw, abbr in _CONTACT_ABBREVIATIONS.items():
-            if kw in line_lower:
-                idx = line_lower.index(kw)
-                remainder = line[idx + len(kw):].lstrip(": ")
-                parts.append(f"{abbr}: {remainder}")
+    seen: set[str] = set()
+    kept: list[str] = []
+    for line in remarks.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        line_lower = stripped.lower()
+        if (any(kw in line_lower for kw in _CONTACT_KEYWORDS) or
+                _PHONE_RE.search(stripped)):
+            cleaned = re.sub(r'\*+', '', stripped).strip()
+            if cleaned and cleaned not in seen:
+                seen.add(cleaned)
+                kept.append(cleaned)
+    return kept
+
+
+def _name_before_phone(line: str, phone_start: int) -> str:
+    """Extract up to two Title Case words immediately before a phone number."""
+    words = line[:phone_start].strip().split()
+    name_words: list[str] = []
+    for w in reversed(words):
+        if _is_name_word(w):
+            name_words.insert(0, w)
+            if len(name_words) >= 2:
                 break
-    result = " | ".join(parts)
-    return result[:_TDSYNNEX_MAX_REMARKS]
+        else:
+            break
+    return " ".join(name_words)
+
+
+def _synnex_compact(lines: list[str]) -> str:
+    """
+    Build a compact contact string for TD Synnex's 60-char remarks limit.
+
+    Checks for inside-delivery requirement, then builds a name+phone pair.
+    Handles both old-style labeled fields ("Contact Name:" / "Contact Phone:")
+    and new sentence-embedded format ("SCHEDULED WITH Kelly Smith 435-555-1234").
+    """
+    has_inside = any(
+        "inside delivery" in l.lower() or "delivery required" in l.lower()
+        for l in lines
+    )
+
+    # Old-style: labeled "Contact Name:" and "Contact Phone:" fields
+    name_from_label = ""
+    phone_from_label = ""
+    for line in lines:
+        ll = line.lower()
+        if "contact name" in ll and not name_from_label:
+            idx = ll.index("contact name")
+            name_from_label = line[idx + len("contact name"):].lstrip(": ").strip()
+        if "contact phone" in ll and not phone_from_label:
+            m = _PHONE_RE.search(line)
+            if m:
+                phone_from_label = m.group()
+
+    if phone_from_label:
+        contact = f"{name_from_label} {phone_from_label}".strip()
+    else:
+        # New format: extract name before the first phone found in any line
+        contact = ""
+        for line in lines:
+            m = _PHONE_RE.search(line)
+            if m:
+                name = _name_before_phone(line, m.start())
+                contact = f"{name} {m.group()}".strip() if name else m.group()
+                break
+
+    parts = []
+    if has_inside:
+        parts.append("inside delivery")
+    if contact:
+        parts.append(contact)
+
+    return " ".join(parts)[:_TDSYNNEX_MAX_REMARKS]
 
 
 # ---------------------------------------------------------------------------
@@ -135,13 +206,17 @@ def annotate_po_with_sme(po_number: str) -> dict:
     Annotate a purchase order's remarks with Xerox SME contract info and/or
     the contact lines from the linked sales order.
 
-    - SO contact lines (notify customer / contact name / contact phone) are
-      always copied regardless of whether SME pricing applies.
+    - SME contract/reference numbers are written first when present.
+    - SO delivery/contact lines are always copied regardless of whether SME
+      pricing applies. Captured from any line that contains a delivery
+      instruction keyword (notify customer, inside delivery, appointment,
+      alternate contact, etc.) or a phone number. Asterisk markers are
+      stripped from the copied lines.
     - Xerox SME contract and reference numbers are added when
-      data/xerox_sme_pricing.csv is present and items match; the CSV is only
-      relevant for Distribution Management Vendor (Xerox) POs.
-    - For TD Synnex vendors the contact text is abbreviated and capped at
-      60 characters to stay within their remarks field limit.
+      data/xerox_sme_pricing.csv is present and items match; only relevant
+      for Distribution Management Vendor (Xerox) POs.
+    - For TD Synnex vendors the contact text is compressed to fit their
+      60-character remarks field limit (inside delivery + primary contact).
 
     Args:
         po_number: Purchase order number to annotate
@@ -225,7 +300,7 @@ def annotate_po_with_sme(po_number: str) -> dict:
                     seen_pairs.add(pair)
                     sme_ref_pairs.append(pair)
 
-    # Build remarks lines
+    # Build remarks — SME pairs first, then contact lines
     remarks_lines: list[str] = []
 
     if sme_ref_pairs:
@@ -244,13 +319,13 @@ def annotate_po_with_sme(po_number: str) -> dict:
             else so_remarks_field
         )
         if so_remarks and so_remarks.strip():
-            contact = _extract_contact_lines(so_remarks)
-            if contact:
+            contact_lines = _extract_contact_lines(so_remarks)
+            if contact_lines:
                 contact_copied_from = so_number
                 if is_tdsynnex:
-                    remarks_lines.append(_abbreviate_contact_lines(contact))
+                    remarks_lines.append(_synnex_compact(contact_lines))
                 else:
-                    remarks_lines.append(contact)
+                    remarks_lines.extend(contact_lines)
 
     if not remarks_lines:
         return {
