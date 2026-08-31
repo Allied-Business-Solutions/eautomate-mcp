@@ -20,7 +20,7 @@ EA_API_COMPANY=1
 EA_DB_CONN=DRIVER={ODBC Driver 18 for SQL Server};SERVER=your-sql-server;DATABASE=YourDatabase;Trusted_Connection=yes;TrustServerCertificate=yes;
 ```
 
-`EA_DB_CONN` is a direct SQL Server connection (Windows auth) used by `_next_ap_voucher_number()` to fetch the next sequential AP voucher number before inserting via `AddAPVoucher`. Required for `add_ap_voucher` to work correctly.
+`EA_DB_CONN` is a direct SQL Server connection (Windows auth) used by the meter history and contract billing history tools (`get_equipment_meter_history`, `get_contract_billing_history`, `get_contract_meter_groups`). Required for those tools to work. Not needed for `add_ap_voucher` — that tool uses the vendor invoice number as the voucher reference.
 
 `EA_API_COMPANY` is the CompanyID from eAutomate Help > About.
 

@@ -90,7 +90,7 @@ If `search_vendors_by_name()` or `search_customers_by_name()` returns multiple m
 | Use when | Invoice has no PO, or is a non-PO expense | Invoice is for items on a purchase order |
 | Voucher type in eAutomate | Vendor Invoice (type 40) | Purchase Order Invoice (type 43) |
 | GL distribution | Required — you supply the lines | Automatic — derived from PO line items |
-| Voucher number | Auto-calculated from DB sequence | Auto-assigned by eAutomate |
+| Voucher number | Set to the vendor invoice number | Auto-assigned by eAutomate |
 | PO required | No | Yes |
 
 **Always prefer `add_po_voucher` when a PO exists.** It creates the correct invoice type, auto-allocates GL, and ties the voucher to the PO for receiving reconciliation.
@@ -270,7 +270,7 @@ get_sales_invoice(invoice_number)
 
 ## Business Rules
 
-- **`add_ap_voucher` requires a unique voucher number** — the MCP calculates it automatically from the DB sequence; do not attempt to supply your own number
+- **`add_ap_voucher` uses the vendor invoice number as the voucher reference** — this makes AP reconciliation easier and prevents duplicate posting of the same invoice; eAutomate will reject a second submission with the same vendor invoice number (duplicate key error)
 - **`add_po_voucher` auto-assigns its voucher number** — do not pass one; the API ignores it and assigns its own
 - **PO must have received quantity** before a PO voucher can be posted — if you get a "sufficient unvouchered quantity" error, the PO needs to be received first (`add_po_receipt` or `receive_purchase_order`)
 - **Voucher date tolerance** — eAutomate may reject voucher dates far outside the posting period; use the actual invoice date

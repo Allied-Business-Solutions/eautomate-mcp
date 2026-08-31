@@ -1,6 +1,6 @@
 """eAutomate MCP — finance tools (GL, AP, AR, invoices)."""
 
-from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive, _next_ap_voucher_number, EA_API_USER
+from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive, EA_API_USER
 from typing import Optional
 from datetime import datetime
 
@@ -102,7 +102,7 @@ def add_ap_voucher(vendor_number: str,
     _validate_positive(total, "total")
     _validate_iso_date(invoice_date, "invoice_date")
 
-    voucher_ref = _code(code_val=_next_ap_voucher_number())
+    voucher_ref = _code(code_val=vendor_invoice_number)
 
     details = []
     for li in gl_line_items:
