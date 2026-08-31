@@ -65,12 +65,15 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 ### Install
 
 ```bash
-git clone git@github.com:Allied-Business-Solutions/eautomate-mcp.git
+git clone https://github.com/Allied-Business-Solutions/eautomate-mcp.git
 cd eautomate-mcp
 uv sync
+uv run python setup_wizard.py
 ```
 
-### Configure
+The wizard prompts for your eAutomate credentials, writes `.env`, and adds the server entry to your Claude Desktop config automatically. Restart Claude Desktop when it finishes.
+
+### Manual configure (if you skip the wizard)
 
 Create a `.env` file in the project root (never commit this):
 
@@ -83,8 +86,6 @@ EA_API_COMPANY=1
 
 - `EA_API_URL` — your eAutomate server's full endpoint URL
 - `EA_API_COMPANY` — the CompanyID from eAutomate → Help → About
-
-### Connect to Claude Desktop
 
 Add this to your Claude Desktop config (`claude_desktop_config.json`):
 
@@ -231,6 +232,7 @@ data/
   xerox_sme_pricing.csv     # Not distributed — drop your own copy here to enable annotate_po_with_sme
 pyproject.toml
 uv.lock
+setup_wizard.py             # One-time setup: writes .env and Claude config entry
 .env                        # Your credentials — never committed
 CLAUDE.md                   # Developer guide for adding tools
 .claude/
