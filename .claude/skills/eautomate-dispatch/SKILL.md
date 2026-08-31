@@ -8,6 +8,58 @@ version: 1.0.0
 
 Guides the full service call lifecycle using the eAutomate MCP. Covers everything from opening a call through dispatching, completing, and invoicing.
 
+---
+
+## Interaction Protocol
+
+These rules apply to every write operation (create, dispatch, update, cancel, complete, hold, equipment move).
+
+### 1. Always confirm before executing
+
+Before calling any write tool, present a plain-language summary of exactly what will happen and ask the user to confirm. Format it as a short list:
+
+> **Ready to open a service call:**
+> - Equipment: E-12345 (Xerox C7030 @ ACME – Main Office)
+> - Caller: Jane Smith
+> - Call type: Emergency
+> - Description: "Paper jam, won't clear"
+> - Technician: John (JOHND)
+>
+> Confirm?
+
+Only call the tool after the user says yes (or equivalent).
+
+### 2. Offer code options when a field needs a code
+
+Never guess code values. If the user hasn't provided one or you're unsure of valid values, fetch the list and present options before asking for confirmation.
+
+| Field | Fetch with |
+|-------|-----------|
+| Call type | `get_code_list("call_types")` |
+| Cancel reason | `get_code_list("cancel_codes")` |
+| Hold reason | `get_code_list("hold_codes")` |
+| Branch | `get_code_list("branches")` |
+| Technician | `get_technician_list()` |
+
+Present options as a numbered or named list. Example:
+
+> **Hold reason — pick one:**
+> 1. PARTS — Waiting for parts
+> 2. CUST — Customer unavailable
+> 3. SCHED — Scheduling conflict
+>
+> Which one?
+
+### 3. Resolve ambiguity before acting
+
+When a name search returns multiple matches, list them with enough detail (number, name, address) for the user to pick one. Never proceed with a guess.
+
+### 4. Irreversible actions need an extra confirmation word
+
+For cancel (can't be undone from the MCP), always make the user explicitly confirm the cancel reason code before proceeding.
+
+---
+
 ## Service Call Status Flow
 
 eAutomate moves calls through these statuses in order (though not strictly enforced):

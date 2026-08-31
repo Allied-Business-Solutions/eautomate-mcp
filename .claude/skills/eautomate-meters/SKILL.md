@@ -10,6 +10,47 @@ Handles all meter reading workflows using the eAutomate MCP. Covers submitting r
 
 ---
 
+## Interaction Protocol
+
+These rules apply to every meter submission.
+
+### 1. Always confirm before submitting
+
+Before calling `submit_meter_reading`, show a summary and ask for confirmation:
+
+> **Ready to submit meter reading:**
+> - Equipment: E-12345 (Xerox C7030 @ ACME)
+> - Meter type: BW
+> - Reading: 124,850
+> - Date: 2025-06-15
+> - Source: Manual
+>
+> Confirm?
+
+Only submit after the user confirms.
+
+### 2. Offer code options when a field needs a code
+
+Never guess code values. Fetch and present options if the user hasn't specified them.
+
+| Field | Fetch with |
+|-------|-----------|
+| Meter type (BW, Color, Scan, etc.) | `get_code_list("meter_types")` |
+| Meter source (how the read was obtained) | `get_code_list("meter_sources")` |
+
+Present as a short list so the user can pick by name or number.
+
+### 3. Resolve equipment ambiguity before submitting
+
+If searching by serial or customer returns multiple equipment records, list them with equipment number, model, and location. Never submit against the wrong machine.
+
+### 4. Special confirmations
+
+- **Rollover:** If the new reading is lower than the previous reading, explicitly flag this and ask the user to confirm `override_previous=True` before submitting.
+- **High reading:** If the API returns a high-read warning, repeat the reading value back to the user and ask them to confirm it is correct before resubmitting.
+
+---
+
 ## Meter Reading Fields
 
 When submitting a meter reading, you need:

@@ -10,6 +10,48 @@ Handles contract lookup and billing workflows using the eAutomate MCP.
 
 ---
 
+## Interaction Protocol
+
+Most contract operations are read-only lookups, but these rules apply whenever you're about to act on contract data or guide the user toward a billing action.
+
+### 1. Always confirm customer and contract before diving in
+
+Before running any contract lookup, confirm you have the right customer. If the user gave a name instead of a number:
+
+```
+search_customers_by_name(name)
+```
+
+If multiple customers match, list them (number, name, city) and ask the user to pick. Never proceed against the wrong account.
+
+### 2. Always include customer_number with get_contract
+
+`get_contract(contract_number)` without a `customer_number` scans all 15,000+ contracts and will time out or return null data. Always call:
+
+```
+get_contract(contract_number, customer_number)
+```
+
+If you don't have `customer_number`, get it first via `get_contracts_for_customer()` or `search_customers_by_name()`.
+
+### 3. Billing actions require a desktop confirmation reminder
+
+Before directing a user to run contract billing in the desktop app, summarize the key facts they need:
+
+> **Contract C-500 is ready to bill:**
+> - Customer: ACME Corp
+> - Next billing date: 2025-07-01
+> - Meters due: BW (E-12345), Color (E-12345)
+> - Missing reads: none
+>
+> You can now run "Preview Next Invoice" in eAutomate desktop under Service → Contracts.
+
+### 4. Never guess contract numbers
+
+If the user refers to a contract loosely ("their maintenance contract", "the big copier contract"), use `get_contracts_for_customer()` to list what exists and ask them to confirm the right one before continuing.
+
+---
+
 ## Contract Types in eAutomate
 
 - **Deposit/Time Block** — customer pre-pays a block of time or copies; balance decreases with usage

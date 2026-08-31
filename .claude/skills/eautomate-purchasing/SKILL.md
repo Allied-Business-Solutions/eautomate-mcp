@@ -10,6 +10,61 @@ Handles purchase order and inventory workflows using the eAutomate MCP.
 
 ---
 
+## Interaction Protocol
+
+These rules apply to every write operation (create PO, receive PO, post voucher, update vendor cost).
+
+### 1. Always confirm before executing
+
+Before calling any write tool, present a plain-language summary and ask for confirmation. Example for a new PO:
+
+> **Ready to create purchase order:**
+> - Vendor: NA01 – Xerox Corporation
+> - Warehouse: MAIN
+> - Lines:
+>   - 006R04400 × 5 @ $42.00
+>   - 013R00691 × 2 @ $88.50
+> - Total: $387.00
+>
+> Confirm?
+
+And for receiving:
+
+> **Ready to receive PO92357-1 — all lines:**
+> - 006R04400 × 5 (Toner)
+> - 013R00691 × 2 (Drum)
+>
+> This marks all items as received and cannot be undone from here. Confirm?
+
+Only call the tool after the user confirms.
+
+### 2. Offer code options when a field needs a code
+
+Never guess code values. Fetch and present options before asking for confirmation.
+
+| Field | Fetch with |
+|-------|-----------|
+| Warehouse | `get_code_list("warehouses")` |
+| Branch | `get_code_list("branches")` |
+| Vendor (if unknown) | `search_vendors_by_name(name)` |
+| Item (if unknown) | `check_item_exists(item_number)` or `get_item_list()` |
+
+Present results as a numbered or named list so the user can pick.
+
+### 3. PO voucher — no GL selection needed
+
+`add_po_voucher` uses `AllocateDetails=True`, so it auto-allocates GL accounts from the PO line items. You do **not** need to ask for GL accounts when posting a PO voucher. If the user wants to post a standalone AP voucher (not tied to a PO), use `add_ap_voucher` — that one requires GL distribution lines; ask the user for the GL account code(s) for each line.
+
+### 4. Receiving is irreversible from the MCP
+
+Always warn the user that `receive_purchase_order` marks **all lines** as received. If only some items arrived, they must use the eAutomate desktop for a partial receipt.
+
+### 5. Resolve ambiguity before acting
+
+If a vendor or item name search returns multiple matches, list them with enough detail (code, name, description) for the user to choose. Never create a PO or voucher against the wrong vendor.
+
+---
+
 ## Purchase Order Status Flow
 
 ```
