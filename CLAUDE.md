@@ -199,9 +199,25 @@ Key patterns:
 ## Installing on a New Machine
 
 ```bash
-pip install -r requirements.txt
+winget install astral-sh.uv   # one-time; adds uv to PATH
+uv sync                        # installs all dependencies into .venv/
 ```
 
-`requirements.txt` pins `mcp[cli]<2.0` (mcp 2.0 removed `mcp.server.fastmcp`) and includes `pyodbc`. The server has been tested against `mcp` 1.29.0.
+`pyproject.toml` pins `mcp[cli]<2.0` (mcp 2.0 removed `mcp.server.fastmcp`) and includes `pyodbc`. The server has been tested against `mcp` 1.29.0.
+
+**Claude Desktop config** (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "eautomate": {
+      "command": "uv",
+      "args": ["--directory", "C:/path/to/eautomate-mcp", "run", "mcp", "run", "server.py"]
+    }
+  }
+}
+```
+
+uv reads `pyproject.toml`, creates `.venv/`, installs dependencies, and runs the server automatically — no manual pip or PATH configuration needed.
 
 **Windows auth for DB:** `EA_DB_CONN` uses `Trusted_Connection=yes` — the Windows account running Claude Code must have read access to the `YourDatabase` SQL Server database. Required for `add_ap_voucher` (AP voucher number sequencing).

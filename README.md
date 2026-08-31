@@ -58,7 +58,7 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 
 ### Prerequisites
 
-- Python 3.10+
+- [uv](https://docs.astral.sh/uv/) — install once with `winget install astral-sh.uv` (handles Python and dependencies automatically)
 - Access to your eAutomate server's PublicAPI endpoint
 - Claude Desktop (or any MCP-compatible client)
 
@@ -67,7 +67,7 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 ```bash
 git clone git@github.com:Allied-Business-Solutions/eautomate-mcp.git
 cd eautomate-mcp
-pip install -r requirements.txt
+uv sync
 ```
 
 ### Configure
@@ -92,8 +92,8 @@ Add this to your Claude Desktop config (`claude_desktop_config.json`):
 {
   "mcpServers": {
     "eautomate": {
-      "command": "mcp",
-      "args": ["run", "C:/path/to/eautomate-mcp/server.py"]
+      "command": "uv",
+      "args": ["--directory", "C:/path/to/eautomate-mcp", "run", "mcp", "run", "server.py"]
     }
   }
 }
@@ -229,7 +229,8 @@ eautomate/
     sme.py                  # Xerox SME pricing annotation (enabled when data/xerox_sme_pricing.csv exists)
 data/
   xerox_sme_pricing.csv     # Not distributed — drop your own copy here to enable annotate_po_with_sme
-requirements.txt
+pyproject.toml
+uv.lock
 .env                        # Your credentials — never committed
 CLAUDE.md                   # Developer guide for adding tools
 .claude/
