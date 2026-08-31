@@ -58,13 +58,22 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 
 ### Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) — install once with `winget install astral-sh.uv` (handles Python and dependencies automatically)
+Install these once using Windows Package Manager (built into Windows 11):
+
+```powershell
+winget install Git.Git
+winget install astral-sh.uv
+```
+
+Restart PowerShell after installing. No separate Python install is needed — uv manages Python automatically.
+
+You'll also need:
 - Access to your eAutomate server's PublicAPI endpoint
-- Claude Desktop (or any MCP-compatible client)
+- Claude Desktop
 
-### Install
+### Fresh Install
 
-```bash
+```powershell
 git clone https://github.com/Allied-Business-Solutions/eautomate-mcp.git
 cd eautomate-mcp
 uv sync
@@ -72,6 +81,15 @@ uv run python setup_wizard.py
 ```
 
 The wizard prompts for your eAutomate credentials, writes `.env`, and adds the server entry to your Claude Desktop config automatically. Restart Claude Desktop when it finishes.
+
+### Updating
+
+```powershell
+cd C:\path\to\eautomate-mcp
+git pull
+```
+
+Restart Claude Desktop. uv picks up any new dependencies automatically on next launch.
 
 ### Manual configure (if you skip the wizard)
 
