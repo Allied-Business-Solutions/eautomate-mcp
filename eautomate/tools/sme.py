@@ -14,10 +14,11 @@ from eautomate.core import (
 #  Pricing matrix config
 # ---------------------------------------------------------------------------
 
-_PRICING_CSV = Path(__file__).parent.parent.parent / "data" / "xerox_sme_pricing.csv"
+_PRICING_DIR = Path(__file__).parent.parent.parent / "data"
 
-# Programs the co-worker is never permitted to use
-_EXCLUDED_PROGRAMS = {
+# Programs used only as a last resort when no other pricing exists for an item.
+# If a preferred program is available it is always chosen over these.
+_FALLBACK_ONLY_PROGRAMS = {
     "Xerox - SourceWell Eligible Customers",
     "Xerox - SIP Program for Authorized DTP Partners",
     "Xerox - Multiple Dealers / NASPO Eligible Dealers Only",
@@ -50,57 +51,73 @@ _PHONE_RE = re.compile(
 #  CSV loader
 # ---------------------------------------------------------------------------
 
-def _load_pricing() -> dict:
-    """
-    Parse the Xerox SME pricing CSV and return a lookup dict:
-        { oem_number: [(price, sme_number, ref_number), ...] }
-    """
-    with open(_PRICING_CSV, newline="", encoding="utf-8-sig") as f:
+def _load_one_csv(path: Path, preferred: dict, fallback: dict) -> None:
+    """Load one MFG supported pricing CSV and merge results into preferred/fallback dicts."""
+    with open(path, newline="", encoding="utf-8-sig") as f:
         rows = list(csv.reader(f))
 
     if len(rows) < 3:
-        raise ValueError("Pricing CSV appears empty or malformed.")
+        return  # skip malformed files silently
 
     program_names = rows[0]
     sme_numbers   = rows[1]
 
-    eligible_cols: list[tuple[int, str]] = []
+    preferred_cols: list[tuple[int, str]] = []
+    fallback_cols: list[tuple[int, str]] = []
     for i, (prog, sme) in enumerate(zip(program_names, sme_numbers)):
         if i < 3:
             continue
-        if prog.strip() in _EXCLUDED_PROGRAMS:
-            continue
         if not sme.strip():
             continue
-        eligible_cols.append((i, sme.strip()))
+        if prog.strip() in _FALLBACK_ONLY_PROGRAMS:
+            fallback_cols.append((i, sme.strip()))
+        else:
+            preferred_cols.append((i, sme.strip()))
 
-    pricing: dict[str, list[tuple[float, str, str]]] = {}
-    for row in rows[2:]:
-        if not row or not row[0].strip():
-            continue
-        oem = row[0].strip()
-        ref = row[2].strip() if len(row) > 2 else ""
-        options: list[tuple[float, str, str]] = []
-        for col_idx, sme in eligible_cols:
-            if col_idx >= len(row):
+    def _merge(cols: list[tuple[int, str]], dest: dict) -> None:
+        for row in rows[2:]:
+            if not row or not row[0].strip():
                 continue
-            cell = row[col_idx].strip()
-            if not cell:
-                continue
-            try:
-                price = float(cell)
-                options.append((price, sme, ref))
-            except ValueError:
-                pass
-        if options:
-            pricing[oem] = options
+            oem = row[0].strip()
+            ref = row[2].strip() if len(row) > 2 else ""
+            for col_idx, sme in cols:
+                if col_idx >= len(row):
+                    continue
+                cell = row[col_idx].strip()
+                if not cell:
+                    continue
+                try:
+                    dest.setdefault(oem, []).append((float(cell), sme, ref))
+                except ValueError:
+                    pass
 
-    return pricing
+    _merge(preferred_cols, preferred)
+    _merge(fallback_cols, fallback)
 
 
-def _best_sme(oem: str, pricing: dict) -> Optional[tuple[str, str]]:
-    """Return (sme_number, ref_number) for the cheapest eligible program, or None."""
-    options = pricing.get(oem)
+def _load_pricing() -> tuple[dict, dict]:
+    """
+    Load all *pricing*.csv files from the data directory.
+
+    Returns (preferred, fallback) merged across all vendor files.
+    preferred: items priced under non-restricted programs (used first).
+    fallback: items ONLY available under SIP/NASPO/SourceWell (used when
+    no preferred pricing exists for that item).
+    """
+    preferred: dict[str, list[tuple[float, str, str]]] = {}
+    fallback:  dict[str, list[tuple[float, str, str]]] = {}
+    for csv_path in sorted(_PRICING_DIR.glob("*pricing*.csv")):
+        _load_one_csv(csv_path, preferred, fallback)
+    return preferred, fallback
+
+
+def _best_sme(oem: str, preferred: dict, fallback: dict) -> Optional[tuple[str, str]]:
+    """Return (sme_number, ref_number) for the cheapest eligible program.
+
+    Preferred programs are checked first; SIP/NASPO/SourceWell fallback is used
+    only when no preferred pricing exists for this item.
+    """
+    options = preferred.get(oem) or fallback.get(oem)
     if not options:
         return None
     _price, sme, ref = min(options, key=lambda x: x[0])
@@ -223,10 +240,11 @@ def annotate_po_with_sme(po_number: str) -> dict:
     """
     _validate_required(po_number, "po_number")
 
-    # Load SME pricing only when CSV is present
-    pricing: Optional[dict] = None
-    if _PRICING_CSV.exists():
-        pricing = _load_pricing()
+    # Load MFG supported pricing only when at least one pricing CSV is present
+    preferred_pricing: Optional[dict] = None
+    fallback_pricing: Optional[dict] = None
+    if any(_PRICING_DIR.glob("*pricing*.csv")):
+        preferred_pricing, fallback_pricing = _load_pricing()
 
     # Fetch the PO
     po_raw = _serialize(_client().service.getPurchaseOrder(
@@ -278,7 +296,7 @@ def annotate_po_with_sme(po_number: str) -> dict:
             if candidate:
                 so_number = candidate
 
-        if pricing is not None:
+        if preferred_pricing is not None:
             item_raw = _serialize(_client().service.getItem(
                 Auth=_auth(),
                 Item=_code(code_val=item_code),
@@ -292,7 +310,7 @@ def annotate_po_with_sme(po_number: str) -> dict:
             if not oem:
                 oem = item_code
 
-            result = _best_sme(oem, pricing)
+            result = _best_sme(oem, preferred_pricing, fallback_pricing or {})
             if result is not None:
                 sme, ref = result
                 pair = f"{sme} Ref#{ref}"

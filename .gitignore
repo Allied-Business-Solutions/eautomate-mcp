@@ -2,8 +2,9 @@
 wsdl service description.txt
 e-automate-api.xml
 
-# Xerox SME pricing matrix — not distributed; drop your own copy in data/
+# MFG supported pricing matrices — not distributed; drop your own copies in data/
 data/xerox_sme_pricing.csv
+data/hp_sme_pricing.csv
 
 # Environment / secrets — never commit
 .env

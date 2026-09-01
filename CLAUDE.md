@@ -183,18 +183,20 @@ Key patterns:
 
 **TD Synnex remarks limit:** When the PO vendor name contains "synnex" (case-insensitive), the contact lines are abbreviated (`Notify: / Name: / Phone:`, joined with ` | `) and hard-truncated at 60 characters to fit TD Synnex's PO remarks field limit.
 
-**CSV location:** `data/xerox_sme_pricing.csv` — excluded from git.
+**CSV location:** `data/xerox_sme_pricing.csv` and `data/hp_sme_pricing.csv` — excluded from git. The tool loads all files matching `data/*pricing*.csv`, so adding a new vendor file is all that's needed.
 
-**Updating the CSV (monthly):**
+**Updating the CSVs (monthly):**
 1. Go to https://shopping.suppliesnetwork.com/Pricing/Search (log in as Brent — already authenticated in Chrome).
-2. Set Vendor = **Xerox**, leave other filters blank.
-3. Click **Matrix Export** and accept the download popup.
-4. Replace `data/xerox_sme_pricing.csv` with the downloaded file.
+2. Set **Vendor = Xerox**, click **Matrix Export**, replace `data/xerox_sme_pricing.csv`.
+3. Set **Vendor = HP**, click **Matrix Export**, replace `data/hp_sme_pricing.csv`.
+4. If other vendor pricing is needed, export with that vendor and save as `data/<vendor>_sme_pricing.csv`.
 
-**Excluded programs** (never selected even if they have the lowest price):
+**Fallback-only programs** (used only when no other pricing exists for that item):
 - Xerox - SourceWell Eligible Customers
 - Xerox - SIP Program for Authorized DTP Partners
 - Xerox - Multiple Dealers / NASPO Eligible Dealers Only
+
+If one of these is the only program available for an item, it is used (lowest price wins). If any non-fallback program is available, it always wins.
 
 ## Installing on a New Machine
 

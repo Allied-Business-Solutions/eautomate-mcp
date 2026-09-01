@@ -30,7 +30,7 @@ Built on [FastMCP](https://github.com/jlowin/fastmcp) using eAutomate's PublicAP
 - Check PO status and vendor pricing; update line-item prices
 - Look up item inventory levels; get next PO number
 - Annotate any PO with SO contact info (notify customer / contact name / contact phone) copied from the linked sales order — works for Xerox, Toshiba, TD Synnex, and all other vendors
-- Add Xerox SME contract and reference numbers to PO remarks for Distribution Management Vendor POs (requires `data/xerox_sme_pricing.csv` — not distributed; SME lookup is skipped if absent but contact info is still written)
+- Add MFG-supported contract numbers (Xerox SME, HP BD) to PO remarks (requires vendor pricing CSVs in `data/` — not distributed; skipped if absent but SO contact info is still written)
 - TD Synnex remarks are automatically abbreviated and capped at 60 characters
 
 **Customers & Equipment**
@@ -245,9 +245,10 @@ eautomate/
     contracts.py            # contract lookup
     technicians.py          # technician records, availability, GPS, transfers
     finance.py              # GL journals, AP vouchers, AR receipts
-    sme.py                  # Xerox SME pricing annotation (enabled when data/xerox_sme_pricing.csv exists)
+    sme.py                  # MFG-supported pricing annotation (loads all data/*pricing*.csv files)
 data/
-  xerox_sme_pricing.csv     # Not distributed — drop your own copy here to enable annotate_po_with_sme
+  xerox_sme_pricing.csv     # Not distributed — Xerox SME programs; export from Supplies Network
+  hp_sme_pricing.csv        # Not distributed — HP BD programs; export from Supplies Network
 pyproject.toml
 uv.lock
 setup_wizard.py             # One-time setup: writes .env and Claude config entry
