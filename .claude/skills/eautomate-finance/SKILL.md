@@ -66,9 +66,24 @@ Only call the tool after the user confirms.
 - Check/reference number (if applicable)
 - Invoices to apply to (invoice number + amount per line, optional)
 
-### 3. For GL accounts — ask the user
+### 3. For GL accounts — look up prior coding first, then ask
 
-There is no `get_code_list` for GL account codes. Ask the user for the GL account number(s) for each distribution line. If they're unsure, remind them to check the eAutomate chart of accounts (GL → Chart of Accounts).
+When the user says "use the same GL as last time" or "code it the same as usual", call `get_vouchers_for_vendor` before asking the user anything:
+
+```
+get_vouchers_for_vendor(vendor_number, limit=3)
+```
+
+This returns the most recent paid vouchers for that vendor with full GL distribution lines. Present the GL coding from the most recent match and ask the user to confirm:
+
+> **Most recent White Cup invoice (INV-2025-0042, $680.00) was coded:**
+> - 7500 – Office Supplies: $680.00 (debit), Branch: MAIN
+>
+> Use the same coding for this $750.42 invoice?
+
+Only fall back to asking the user manually if `get_vouchers_for_vendor` returns no results (vendor has no paid history in the last year) or if the user wants different coding.
+
+If no history exists, there is no `get_code_list` for GL account codes — ask the user for the account number(s). If they're unsure, remind them to check the eAutomate chart of accounts (GL → Chart of Accounts).
 
 For branches and departments:
 ```
@@ -264,6 +279,8 @@ get_sales_invoice(invoice_number)
 | "Apply all pending payments" | `get_unapplied_payments()` to review, then `apply_unapplied_payments()` |
 | "Was voucher 145609 paid?" | `get_ap_voucher_applications("145609")` |
 | "Show me all vouchers from last month" | `get_voucher_list(since_date="2025-07-01")` |
+| "Use the same GL as last time / code it like usual" | `get_vouchers_for_vendor(vendor_number)` — pulls recent paid vouchers with GL lines; confirm coding with user before posting |
+| "How do we normally code White Cup?" | `get_vouchers_for_vendor("CS02")` — show GL from most recent paid invoice |
 | "Post a journal entry to reclassify this expense" | Gather GL lines → `add_gl_journal()` |
 
 ---

@@ -2,7 +2,7 @@
 
 from eautomate.core import mcp, _client, _auth, _serialize, _code, _str_ex, _bool_ex, _int_ex, _double_ex, _date_ex, _validate_required, _validate_str_len, _validate_iso_date, _validate_positive, EA_API_USER
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 # ===========================================================================
@@ -138,6 +138,48 @@ def add_ap_voucher(vendor_number: str,
         }
     )
     return _serialize(result)
+
+
+@mcp.tool()
+def get_vouchers_for_vendor(vendor_number: str,
+                             since_date: Optional[str] = None,
+                             limit: int = 5) -> list:
+    """
+    Return recent paid AP vouchers for a vendor, including GL distribution lines.
+
+    Useful for looking up how a vendor's invoices have been coded in the past
+    ("use the same GL as last time"). Only returns vouchers that have had a
+    payment applied; open/unpaid vouchers will not appear.
+
+    Args:
+        vendor_number: Vendor code (e.g. "CS02")
+        since_date: ISO date string to search from (default: 1 year ago)
+        limit: Max vouchers to return (default 5)
+    """
+    _validate_required(vendor_number, "vendor_number")
+    start = since_date or (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+    end = datetime.now().strftime("%Y-%m-%d")
+    _validate_iso_date(start, "since_date")
+
+    raw = _serialize(_client().service.getAPVoucherApplicationsByDate(
+        Auth=_auth(),
+        startDate=_date_ex(start),
+        endDate=_date_ex(end),
+    ))
+    if not isinstance(raw, list):
+        raw = [raw] if raw else []
+
+    vendor_upper = vendor_number.strip().upper()
+    matches = []
+    for v in raw:
+        code = (v.get("VendorNumber") or {}).get("Code", {})
+        val = (code.get("Value") or "").strip().upper()
+        if val == vendor_upper:
+            matches.append(v)
+        if len(matches) >= limit:
+            break
+
+    return matches
 
 
 # ===========================================================================
