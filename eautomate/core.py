@@ -27,11 +27,10 @@ logging.basicConfig(
 
 load_dotenv()
 
-EA_API_URL     = os.getenv("EA_API_URL",     "")
+EA_API_URL     = os.getenv("EA_API_URL",     "https://boise.allied.tech/pip/PublicAPIService.asmx")
 EA_API_USER    = os.getenv("EA_API_USER",    "")
 EA_API_PASS    = os.getenv("EA_API_PASS",    "")
-EA_API_COMPANY = os.getenv("EA_API_COMPANY", "")
-EA_DB_CONN     = os.getenv("EA_DB_CONN",     "")
+EA_API_COMPANY = os.getenv("EA_API_COMPANY", "AlliedBusiness")
 
 mcp = FastMCP("eautomate", dependencies=["zeep", "python-dotenv", "requests"])
 
